@@ -256,6 +256,7 @@ import { useAuthStore } from '@/stores/auth'
 import { CREATE_TICKET } from '@/graphql/mutations'
 import { VALIDATION_RULES, TICKET_PRIORITY, TICKET_PRIORITY_LABELS, TICKET_PRIORITY_COLORS, TICKET_CATEGORY, TICKET_CATEGORY_LABELS, TICKET_CATEGORY_ICONS } from '@/utils/constants'
 import { parseGraphQLError } from '@/utils/helpers'
+import { getUploadUrl } from '@/utils/api'
 import AttachmentUpload from '@/components/common/AttachmentUpload.vue'
 
 const router = useRouter()
@@ -295,7 +296,7 @@ const categoryOptions = Object.keys(TICKET_CATEGORY).map(key => ({
 const { mutate: createTicket } = useMutation(CREATE_TICKET)
 
 function handleFilesUpdate(files) {
-  console.log('Files updated:', files)
+  
   attachments.value = files
 }
 
@@ -314,27 +315,27 @@ async function handleSubmit() {
       workstationNumber: formData.value.workstation || null
     }
 
-    console.log('Creating ticket with input:', input)
+    
     const result = await createTicket({ createTicketInput: input })
 
     if (result?.data?.createTicket) {
       const ticketId = result.data.createTicket.id
-      console.log('Ticket created with ID:', ticketId)
-      console.log('Attachments to upload:', attachments.value)
+      
+      
       
       // Upload attachments if any
       if (attachments.value && attachments.value.length > 0) {
-        console.log('Starting file uploads...')
+        
         const token = authStore.token
         
         for (const file of attachments.value) {
-          console.log('Uploading file:', file.name)
+          
           const uploadFormData = new FormData()
           uploadFormData.append('file', file)
           uploadFormData.append('ticketId', ticketId)
           
           try {
-            const uploadResponse = await fetch(`http://192.168.1.2:4000/attachments/upload`, {
+            const uploadResponse = await fetch(`'" + getUploadUrl() + "'`, {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${token}`
@@ -347,16 +348,16 @@ async function handleSubmit() {
               console.error('Upload failed for', file.name, 'Error:', errorText)
               notificationStore.warning(`Failed to upload ${file.name}`)
             } else {
-              console.log('Successfully uploaded', file.name)
+              
             }
           } catch (uploadErr) {
             console.error('Failed to upload attachment:', file.name, uploadErr)
             notificationStore.warning(`Failed to upload ${file.name}`)
           }
         }
-        console.log('All uploads complete')
+        
       } else {
-        console.log('No attachments to upload')
+        
       }
       
       notificationStore.success('Ticket created successfully!')

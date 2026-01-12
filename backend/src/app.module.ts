@@ -17,6 +17,7 @@ import { SlackModule } from './slack/slack.module';
 import { KnowledgeBaseModule } from './knowledge-base/knowledge-base.module';
 import { PortalModule } from './portal/portal.module';
 import { SurveysModule } from './surveys/surveys.module';
+import { PubSubModule } from './pubsub/pubsub.module';
 
 // Entity imports
 import { User } from './users/entities/user.entity';
@@ -59,6 +60,17 @@ import { SurveyResponse } from './surveys/entities/survey-response.entity';
           path: error.path,
         };
       },
+      subscriptions: {
+        'graphql-ws': {
+          onConnect: (context: any) => {
+            const { connectionParams } = context;
+            if (connectionParams?.authToken) {
+              context.authToken = connectionParams.authToken;
+            }
+          },
+        },
+      },
+      installSubscriptionHandlers: true,
     }),
     AuthModule,
     UsersModule,
@@ -71,6 +83,7 @@ import { SurveyResponse } from './surveys/entities/survey-response.entity';
     KnowledgeBaseModule,
     PortalModule,
     SurveysModule,
+    PubSubModule,
   ],
   controllers: [],
   providers: [],

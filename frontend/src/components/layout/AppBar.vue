@@ -140,7 +140,7 @@ function handleSearch() {
 
 function handleNotificationClick(notification) {
   // Handle notification click
-  console.log('Notification clicked:', notification)
+  
 }
 
 function handleLogout() {

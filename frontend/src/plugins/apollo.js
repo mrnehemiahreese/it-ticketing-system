@@ -1,4 +1,7 @@
-import { ApolloClient, InMemoryCache, createHttpLink, from } from '@apollo/client/core'
+import { ApolloClient, InMemoryCache, createHttpLink, from, split } from '@apollo/client/core'
+import { getMainDefinition } from '@apollo/client/utilities'
+import { GraphQLWsLink } from '@apollo/client/link/subscriptions'
+import { createClient } from 'graphql-ws'
 import { setContext } from '@apollo/client/link/context'
 import { onError } from '@apollo/client/link/error'
 import { DefaultApolloClient } from '@vue/apollo-composable'
@@ -7,6 +10,34 @@ import { DefaultApolloClient } from '@vue/apollo-composable'
 const httpLink = createHttpLink({
   uri: import.meta.env.VITE_GRAPHQL_ENDPOINT || 'http://localhost:4000/graphql',
 })
+
+// WebSocket connection for subscriptions
+const wsLink = new GraphQLWsLink(
+  createClient({
+    url: (import.meta.env.VITE_GRAPHQL_ENDPOINT || 'http://localhost:4000/graphql').replace('http', 'ws'),
+    connectionParams: () => {
+      const token = localStorage.getItem('auth_token')
+      return {
+        authToken: token ? `Bearer ${token}` : '',
+      }
+    },
+    retryAttempts: 5,
+    shouldRetry: () => true,
+  })
+)
+
+// Split based on operation type
+const splitLink = split(
+  ({ query }) => {
+    const definition = getMainDefinition(query)
+    return (
+      definition.kind === 'OperationDefinition' &&
+      definition.operation === 'subscription'
+    )
+  },
+  wsLink,
+  httpLink
+)
 
 // Auth middleware
 const authLink = setContext((_, { headers }) => {
@@ -63,7 +94,7 @@ const cache = new InMemoryCache({
 
 // Create Apollo Client
 export const apolloClient = new ApolloClient({
-  link: from([errorLink, authLink, httpLink]),
+  link: from([errorLink, authLink, splitLink]),
   cache,
   defaultOptions: {
     watchQuery: {

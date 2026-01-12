@@ -7,6 +7,7 @@ import { UpdateCommentInput } from './dto/update-comment.input';
 import { User } from '../users/entities/user.entity';
 import { Role } from '../common/enums/role.enum';
 import { SlackService } from '../slack/slack.service';
+import { sanitizeContent } from '../common/utils/sanitize';
 
 @Injectable()
 export class CommentsService {
@@ -17,8 +18,14 @@ export class CommentsService {
   ) {}
 
   async create(createCommentInput: CreateCommentInput, userId: string): Promise<Comment> {
-    const comment = this.commentsRepository.create({
+    // Security: Sanitize comment content to prevent XSS
+    const sanitizedInput = {
       ...createCommentInput,
+      content: sanitizeContent(createCommentInput.content),
+    };
+
+    const comment = this.commentsRepository.create({
+      ...sanitizedInput,
       userId,
     });
 
@@ -73,6 +80,11 @@ export class CommentsService {
     // Only the comment author or admins can update
     if (comment.userId !== user.id && !user.roles.includes(Role.ADMIN)) {
       throw new ForbiddenException('You do not have permission to update this comment');
+    }
+
+    // Security: Sanitize content if being updated
+    if (updateCommentInput.content) {
+      updateCommentInput.content = sanitizeContent(updateCommentInput.content);
     }
 
     Object.assign(comment, updateCommentInput);

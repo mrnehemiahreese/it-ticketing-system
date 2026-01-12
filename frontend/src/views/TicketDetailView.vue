@@ -93,6 +93,24 @@
             </v-card-text>
           </v-card>
 
+
+          <!-- User Resolve Card (Ticket owner only, not admin/agent) -->
+          <v-card v-if="!authStore.isAdmin && !authStore.isAgent && isTicketOwner && ticket.status !== 'RESOLVED' && ticket.status !== 'CLOSED'" elevation="2" class="mb-4">
+            <v-card-title>Mark as Resolved</v-card-title>
+            <v-divider />
+            <v-card-text>
+              <p class="text-body-2 mb-3">If your issue has been resolved, you can mark this ticket as complete.</p>
+              <v-btn
+                color="success"
+                block
+                :loading="resolveLoading"
+                @click="userMarkResolved"
+              >
+                <v-icon start>mdi-check-circle</v-icon>
+                Mark My Ticket Resolved
+              </v-btn>
+            </v-card-text>
+          </v-card>
           <!-- Details Card -->
           <v-card elevation="2" class="mb-4">
             <v-card-title>Details</v-card-title>
@@ -219,7 +237,7 @@
                 >
                   <v-card @click="openImageModal(attachment)" class="cursor-pointer">
                     <v-img
-                      :src="`http://192.168.1.2:4000/attachments/${attachment.id}`"
+                      :src="`${getAttachmentUrl(\'\')}/${attachment.id}`"
                       :alt="attachment.filename"
                       cover
                       height="300"
@@ -299,7 +317,7 @@
             style="cursor: grab; width: 100%; height: 100%; position: relative;"
           >
             <img
-              :src="`http://192.168.1.2:4000/attachments/${currentImageAttachment.id}`"
+              :src="`${getAttachmentUrl(\'\')}/${currentImageAttachment.id}`"
               :alt="currentImageAttachment.filename"
               :style="{
                 maxHeight: '100%',
@@ -342,12 +360,14 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { useQuery, useMutation } from '@vue/apollo-composable'
+import { useQuery, useMutation, useSubscription } from '@vue/apollo-composable'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationStore } from '@/stores/notification'
 import { GET_TICKET, GET_TECHNICIANS } from '@/graphql/queries'
-import { UPDATE_TICKET_STATUS, ASSIGN_TICKET, CREATE_COMMENT, DELETE_COMMENT } from '@/graphql/mutations'
+import { TICKET_UPDATED_SUBSCRIPTION, COMMENT_ADDED_SUBSCRIPTION } from '@/graphql/subscriptions'
+import { UPDATE_TICKET_STATUS, ASSIGN_TICKET, CREATE_COMMENT, DELETE_COMMENT, USER_MARK_RESOLVED } from '@/graphql/mutations'
 import { formatDate, getInitials, getAvatarColor, formatFileSize, parseGraphQLError } from '@/utils/helpers'
+import { getAttachmentUrl } from '@/utils/api'
 import { TICKET_STATUS, TICKET_STATUS_LABELS, TICKET_STATUS_COLORS, TICKET_CATEGORY_LABELS, TICKET_CATEGORY_ICONS } from '@/utils/constants'
 import StatusChip from '@/components/tickets/StatusChip.vue'
 import PriorityChip from '@/components/tickets/PriorityChip.vue'
@@ -363,6 +383,7 @@ const newStatus = ref('')
 const selectedAgent = ref(null)
 const editingComment = ref(null)
 const statusLoading = ref(false)
+const resolveLoading = ref(false)
 const assignLoading = ref(false)
 const commentLoading = ref(false)
 const imageModal = ref({
@@ -375,6 +396,38 @@ const imageModal = ref({
 // Fetch ticket
 const { result, loading, refetch } = useQuery(GET_TICKET, { id: ticketId.value }, { fetchPolicy: "cache-and-network" })
 const ticket = computed(() => result.value?.ticket)
+
+// Subscribe to ticket updates
+const { onResult: onTicketUpdate } = useSubscription(
+  TICKET_UPDATED_SUBSCRIPTION,
+  () => ({ ticketId: ticketId.value }),
+  () => ({ enabled: !!ticketId.value })
+)
+
+onTicketUpdate((data) => {
+  if (data.data?.ticketUpdated) {
+    // Update the ticket in cache with new data
+    const updatedTicket = data.data.ticketUpdated
+    result.value = { ticket: updatedTicket }
+  }
+})
+
+// Subscribe to new comments
+const { onResult: onCommentAdded } = useSubscription(
+  COMMENT_ADDED_SUBSCRIPTION,
+  () => ({ ticketId: ticketId.value }),
+  () => ({ enabled: !!ticketId.value })
+)
+
+onCommentAdded((data) => {
+  if (data.data?.commentAdded && ticket.value) {
+    // Add new comment to the ticket's comments array
+    const newComment = data.data.commentAdded
+    if (!ticket.value.comments.find(c => c.id === newComment.id)) {
+      ticket.value.comments.push(newComment)
+    }
+  }
+})
 
 // Image attachment helpers
 const imageAttachments = computed(() => {
@@ -392,6 +445,10 @@ const agents = computed(() => {
   return techs.map(t => ({ id: t.id, name: t.fullname }))
 })
 
+const isTicketOwner = computed(() => {
+  return ticket.value?.createdBy?.id === authStore.user?.id
+})
+
 // Status options
 const statusOptions = Object.keys(TICKET_STATUS).map(key => ({
   value: TICKET_STATUS[key],
@@ -405,21 +462,7 @@ const { mutate: updateStatus } = useMutation(UPDATE_TICKET_STATUS)
 const { mutate: assignTicket } = useMutation(ASSIGN_TICKET)
 const { mutate: createComment } = useMutation(CREATE_COMMENT)
 const { mutate: deleteComment } = useMutation(DELETE_COMMENT)
-
-// Auto-refresh comments every 15 seconds
-let pollInterval = null
-
-onMounted(() => {
-  pollInterval = setInterval(() => {
-    refetch()
-  }, 15000)
-})
-
-onUnmounted(() => {
-  if (pollInterval) {
-    clearInterval(pollInterval)
-  }
-})
+const { mutate: markResolved } = useMutation(USER_MARK_RESOLVED)
 
 // Initialize status
 watch(ticket, (newTicket) => {
@@ -439,11 +482,24 @@ async function updateTicketStatus() {
       }
     })
     notificationStore.success('Status updated successfully')
-    await refetch()
   } catch (err) {
     notificationStore.error(parseGraphQLError(err))
   } finally {
     statusLoading.value = false
+  }
+}
+
+async function userMarkResolved() {
+  resolveLoading.value = true
+  try {
+    await markResolved({
+      ticketId: ticketId.value
+    })
+    notificationStore.success("Your ticket has been marked as resolved!")
+  } catch (err) {
+    notificationStore.error(parseGraphQLError(err))
+  } finally {
+    resolveLoading.value = false
   }
 }
 
@@ -456,7 +512,6 @@ async function assignAgent() {
       userId: selectedAgent.value
     })
     notificationStore.success('Agent assigned successfully')
-    await refetch()
   } catch (err) {
     notificationStore.error(parseGraphQLError(err))
   } finally {
@@ -470,7 +525,6 @@ async function handleSubmitComment(commentData) {
     await createComment({ createCommentInput: commentData })
     notificationStore.success('Comment added successfully')
     editingComment.value = null
-    await refetch()
   } catch (err) {
     notificationStore.error(parseGraphQLError(err))
   } finally {
@@ -487,7 +541,6 @@ async function handleDeleteComment(comment) {
   try {
     await deleteComment({ id: comment.id })
     notificationStore.success('Comment deleted successfully')
-    await refetch()
   } catch (err) {
     notificationStore.error(parseGraphQLError(err))
   }
@@ -515,7 +568,7 @@ function getFileIcon(mimeType) {
 }
 
 function handleAttachmentClick(attachment) {
-  const url = `http://192.168.1.2:4000/attachments/${attachment.id}`
+  const url = `${getAttachmentUrl(\'\')}/${attachment.id}`
   const token = authStore.token
 
   // For images, open in modal
@@ -601,7 +654,7 @@ function handleMouseWheel(event) {
 function downloadImage() {
   if (!currentImageAttachment.value) return
   
-  const url = `http://192.168.1.2:4000/attachments/${currentImageAttachment.value.id}`
+  const url = `${getAttachmentUrl(\'\')}/${currentImageAttachment.value.id}`
   const a = document.createElement('a')
   a.href = url
   a.download = currentImageAttachment.value.filename

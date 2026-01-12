@@ -111,20 +111,20 @@ const validationRules = computed(() => [
 ])
 
 function handleFileChange(newFiles) {
-  console.log('[AttachmentUpload] handleFileChange called', newFiles)
-  console.log('[AttachmentUpload] newFiles type:', typeof newFiles)
-  console.log('[AttachmentUpload] newFiles is array:', Array.isArray(newFiles))
+  
+  
+  
   
   if (!newFiles) {
-    console.log('[AttachmentUpload] No files, clearing')
+    
     previews.value = []
     emit('update:files', [])
     return
   }
 
   const fileArray = Array.isArray(newFiles) ? newFiles : [newFiles]
-  console.log('[AttachmentUpload] fileArray length:', fileArray.length)
-  console.log('[AttachmentUpload] fileArray:', fileArray)
+  
+  
   
   previews.value = fileArray.map(file => ({
     name: file.name,
@@ -133,16 +133,16 @@ function handleFileChange(newFiles) {
     file: file
   }))
 
-  console.log('[AttachmentUpload] Emitting update:files with', fileArray.length, 'files')
+  
   emit('update:files', fileArray)
 }
 
 function removeFile(index) {
-  console.log('[AttachmentUpload] Removing file at index', index)
+  
   previews.value.splice(index, 1)
   const newFiles = previews.value.map(p => p.file)
   files.value = newFiles
-  console.log('[AttachmentUpload] Emitting update:files with', newFiles.length, 'files after removal')
+  
   emit('update:files', newFiles)
 }
 

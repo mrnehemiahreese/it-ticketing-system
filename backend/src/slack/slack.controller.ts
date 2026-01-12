@@ -149,8 +149,8 @@ export class SlackController {
 
       this.logger.log(`Thread reply from ${user} in thread ${thread_ts}: ${text}`);
 
-      // Call SlackService to handle the thread message
-      await this.slackService.handleSlackThreadMessage(thread_ts, user, text);
+      // Call SlackService to handle the thread message (pass full event, no client)
+      await this.slackService.handleSlackThreadMessage(event, null);
     } catch (error) {
       this.logger.error(`Failed to handle thread reply: ${error.message}`);
     }

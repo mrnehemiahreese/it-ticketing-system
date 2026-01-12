@@ -6,11 +6,12 @@ import { SlackController } from './slack.controller';
 import { Ticket } from '../tickets/entities/ticket.entity';
 import { Comment } from '../comments/entities/comment.entity';
 import { User } from '../users/entities/user.entity';
+import { Attachment } from '../attachments/entities/attachment.entity';
 
 @Module({
   imports: [
     ConfigModule,
-    TypeOrmModule.forFeature([Ticket, Comment, User]),
+    TypeOrmModule.forFeature([Ticket, Comment, User, Attachment]),
   ],
   providers: [SlackService],
   controllers: [SlackController],

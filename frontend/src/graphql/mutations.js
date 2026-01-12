@@ -259,3 +259,14 @@ export const CHANGE_PASSWORD = gql`
     }
   }
 `
+
+// User self-resolve mutation
+export const USER_MARK_RESOLVED = gql`
+  mutation UserMarkResolved($ticketId: String!) {
+    userMarkResolved(ticketId: $ticketId) {
+      id
+      status
+      resolvedAt
+    }
+  }
+`

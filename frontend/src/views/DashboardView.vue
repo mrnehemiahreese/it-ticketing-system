@@ -213,9 +213,10 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { useQuery } from '@vue/apollo-composable'
+import { useQuery, useSubscription } from '@vue/apollo-composable'
 import { useTicketStore } from '@/stores/ticket'
 import { GET_TICKETS } from '@/graphql/queries'
+import { NEW_TICKET_SUBSCRIPTION } from '@/graphql/subscriptions'
 import { formatRelativeTime, getInitials, getAvatarColor } from '@/utils/helpers'
 import StatsCard from '@/components/common/StatsCard.vue'
 import StatusChip from '@/components/tickets/StatusChip.vue'
@@ -226,8 +227,32 @@ const ticketStore = useTicketStore()
 // Fetch recent tickets
 const { result, loading } = useQuery(GET_TICKETS)
 
-
 const recentTickets = computed(() => result.value?.tickets || [])
+
+// Subscribe to new tickets
+const { onResult: onNewTicket } = useSubscription(NEW_TICKET_SUBSCRIPTION)
+
+onNewTicket((data) => {
+  if (data.data?.newTicket) {
+    const newTicket = data.data.newTicket
+    // Check if ticket is not already in list
+    if (!recentTickets.value.find(t => t.id === newTicket.id)) {
+      // Insert at the beginning to show latest tickets first
+      recentTickets.value.unshift(newTicket)
+      // Keep only the 10 most recent
+      if (recentTickets.value.length > 10) {
+        recentTickets.value.pop()
+      }
+      // Update store and activity log
+      ticketStore.addTicket(newTicket)
+      addActivityLog({
+        message: `New ticket created: ${newTicket.ticketNumber}`,
+        icon: 'mdi-ticket-plus',
+        color: 'primary'
+      })
+    }
+  }
+})
 
 // Populate store with tickets for stats computation
 watch(() => result.value?.tickets, (tickets) => {
@@ -243,37 +268,30 @@ const resolvedPercentage = computed(() => {
   if (stats.value.total === 0) return 0
   return Math.round((stats.value.resolved / stats.value.total) * 100)
 })
-// Mock activity data
+
+// Activity log with real-time updates
 const recentActivity = ref([
   {
     id: 1,
-    message: 'New ticket created by John Doe',
-    timestamp: new Date(Date.now() - 1000 * 60 * 5),
-    icon: 'mdi-ticket-plus',
-    color: 'primary'
-  },
-  {
-    id: 2,
-    message: 'Ticket #TKT-001 assigned to Jane Smith',
-    timestamp: new Date(Date.now() - 1000 * 60 * 15),
-    icon: 'mdi-account-arrow-right',
+    message: 'Recent activity will appear here',
+    timestamp: new Date(),
+    icon: 'mdi-information',
     color: 'info'
-  },
-  {
-    id: 3,
-    message: 'Ticket #TKT-002 marked as resolved',
-    timestamp: new Date(Date.now() - 1000 * 60 * 30),
-    icon: 'mdi-check-circle',
-    color: 'success'
-  },
-  {
-    id: 4,
-    message: 'Comment added to ticket #TKT-003',
-    timestamp: new Date(Date.now() - 1000 * 60 * 45),
-    icon: 'mdi-comment',
-    color: 'grey'
   }
 ])
+
+function addActivityLog(activity) {
+  const newActivity = {
+    id: recentActivity.value.length + 1,
+    ...activity,
+    timestamp: new Date()
+  }
+  recentActivity.value.unshift(newActivity)
+  // Keep only the 5 most recent activities
+  if (recentActivity.value.length > 5) {
+    recentActivity.value.pop()
+  }
+}
 
 onMounted(() => {
   // Update ticket store when data is loaded
