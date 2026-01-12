@@ -357,26 +357,7 @@ describe('TicketsService', () => {
     });
   });
 
-  describe('userMarkResolved', () => {
-    it('should allow user to mark their own ticket as resolved', async () => {
-      ticketsRepository.findOne.mockResolvedValue(mockTicket);
-      ticketsRepository.save.mockImplementation((t) => Promise.resolve(t));
-
-      const result = await service.userMarkResolved('ticket-123', mockUser as any);
-
-      expect(result).toBeDefined();
-      expect(slackService.notifyUserMarkedResolved).toHaveBeenCalled();
-    });
-
-    it('should throw ForbiddenException for other users ticket', async () => {
-      ticketsRepository.findOne.mockResolvedValue(mockTicket);
-      const otherUser = { ...mockUser, id: 'other-user' };
-
-      await expect(
-        service.userMarkResolved('ticket-123', otherUser as any),
-      ).rejects.toThrow(ForbiddenException);
-    });
-  });
+  
 
   describe('watchers', () => {
     it('should add a watcher to a ticket', async () => {

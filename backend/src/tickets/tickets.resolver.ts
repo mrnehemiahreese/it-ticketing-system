@@ -159,35 +159,6 @@ export class TicketsResolver {
   }
 
 
-  @Query(() => PaginatedTicketsResponse, { name: 'ticketsPaginated' })
-  async findAllPaginated(
-    @CurrentUser() user: User,
-    @Args('page', { type: () => Int, defaultValue: 1 }) page: number,
-    @Args('limit', { type: () => Int, defaultValue: 20 }) limit: number,
-    @Args('filters', { nullable: true }) filters?: TicketFiltersInput,
-  ): Promise<PaginatedTicketsResponse> {
-    const { items, totalItems } = await this.ticketsService.findAllPaginated(
-      filters,
-      user,
-      page,
-      Math.min(limit, 100), // Max 100 items per page
-    );
-    
-    const totalPages = Math.ceil(totalItems / limit);
-    
-    return {
-      items,
-      pageInfo: {
-        currentPage: page,
-        totalPages,
-        totalItems,
-        itemsPerPage: limit,
-        hasNextPage: page < totalPages,
-        hasPreviousPage: page > 1,
-      },
-    };
-  }
-
   @Subscription(() => Ticket, {
     name: 'newTicket',
     resolve: (value) => value.newTicket,

@@ -1059,4 +1059,128 @@ export class SlackService implements OnModuleInit {
     if (text.length <= length) return text;
     return text.substring(0, length) + '...';
   }
+
+  /**
+   * Notify about SLA breach
+   */
+  async notifySlaBreached(ticket: any): Promise<void> {
+    if (!this.slackEnabled || !this.app) {
+      this.logger.warn("Slack not initialized, skipping SLA breach notification");
+      return;
+    }
+
+    try {
+      const text = `:warning: *SLA BREACHED* for ticket #${ticket.id.substring(0, 8)}`;
+      const blocks = [
+        {
+          type: "header",
+          text: {
+            type: "plain_text",
+            text: "SLA Breach Alert",
+            emoji: true,
+          },
+        },
+        {
+          type: "section",
+          fields: [
+            {
+              type: "mrkdwn",
+              text: `*Ticket:*\n${this.truncateText(ticket.title, 50)}`,
+            },
+            {
+              type: "mrkdwn",
+              text: `*Priority:*\n${this.getPriorityEmoji(ticket.priority)} ${ticket.priority}`,
+            },
+            {
+              type: "mrkdwn",
+              text: `*Status:*\n${this.getStatusEmoji(ticket.status)} ${ticket.status}`,
+            },
+            {
+              type: "mrkdwn",
+              text: `*Assigned To:*\n${ticket.assignedTo?.name || "Unassigned"}`,
+            },
+          ],
+        },
+        {
+          type: "context",
+          elements: [
+            {
+              type: "mrkdwn",
+              text: `SLA resolution deadline has been breached. Immediate action required.`,
+            },
+          ],
+        },
+      ];
+
+      await this.app.client.chat.postMessage({
+        channel: this.defaultChannelId,
+        text,
+        blocks,
+      });
+    } catch (error) {
+      this.logger.error(`Failed to send SLA breach notification: ${error.message}`);
+    }
+  }
+
+  /**
+   * Notify about ticket escalation
+   */
+  async notifyEscalation(ticket: any, escalatedTo: any): Promise<void> {
+    if (!this.slackEnabled || !this.app) {
+      this.logger.warn("Slack not initialized, skipping escalation notification");
+      return;
+    }
+
+    try {
+      const text = `:arrow_up: *ESCALATED* - Ticket #${ticket.id.substring(0, 8)} has been escalated`;
+      const blocks = [
+        {
+          type: "header",
+          text: {
+            type: "plain_text",
+            text: "Ticket Escalation",
+            emoji: true,
+          },
+        },
+        {
+          type: "section",
+          fields: [
+            {
+              type: "mrkdwn",
+              text: `*Ticket:*\n${this.truncateText(ticket.title, 50)}`,
+            },
+            {
+              type: "mrkdwn",
+              text: `*Priority:*\n${this.getPriorityEmoji(ticket.priority)} ${ticket.priority}`,
+            },
+            {
+              type: "mrkdwn",
+              text: `*Escalated To:*\n${escalatedTo?.name || "Unknown"}`,
+            },
+            {
+              type: "mrkdwn",
+              text: `*Previous Assignee:*\n${ticket.assignedTo?.name || "Unassigned"}`,
+            },
+          ],
+        },
+        {
+          type: "context",
+          elements: [
+            {
+              type: "mrkdwn",
+              text: `Ticket escalated due to SLA policy requirements.`,
+            },
+          ],
+        },
+      ];
+
+      await this.app.client.chat.postMessage({
+        channel: this.defaultChannelId,
+        text,
+        blocks,
+      });
+    } catch (error) {
+      this.logger.error(`Failed to send escalation notification: ${error.message}`);
+    }
+  }
 }

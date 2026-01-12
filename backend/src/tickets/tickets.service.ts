@@ -282,5 +282,73 @@ export class TicketsService {
       resolved: resolvedTickets,
       closed: closedTickets,
     };
+
+  }
+  async findAllPaginated(
+    filters: TicketFiltersInput | undefined,
+    user: User | undefined,
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<{ items: Ticket[]; totalItems: number }> {
+    const query = this.ticketsRepository.createQueryBuilder("ticket")
+      .leftJoinAndSelect("ticket.createdBy", "createdBy")
+      .leftJoinAndSelect("ticket.assignedTo", "assignedTo")
+      .leftJoinAndSelect("ticket.comments", "comments")
+      .leftJoinAndSelect("ticket.attachments", "attachments");
+
+    // Customer filtering - non-admin/agent users can only see their own tickets
+    if (user && !user.roles.includes(Role.ADMIN) && !user.roles.includes(Role.AGENT)) {
+      query.andWhere(
+        "(ticket.createdById = :userId OR ticket.assignedToId = :userId)",
+        { userId: user.id }
+      );
+    }
+
+    if (filters) {
+      if (filters.status) {
+        query.andWhere("ticket.status = :status", { status: filters.status });
+      }
+      if (filters.priority) {
+        query.andWhere("ticket.priority = :priority", { priority: filters.priority });
+      }
+      if (filters.category) {
+        query.andWhere("ticket.category = :category", { category: filters.category });
+      }
+      if (filters.assignedToId) {
+        query.andWhere("ticket.assignedToId = :assignedToId", { assignedToId: filters.assignedToId });
+      }
+      if (filters.createdById) {
+        query.andWhere("ticket.createdById = :createdById", { createdById: filters.createdById });
+      }
+      if (filters.search) {
+        query.andWhere(
+          "(ticket.title LIKE :search OR ticket.description LIKE :search)",
+          { search: `%${filters.search}%` }
+        );
+      }
+    }
+
+    query.orderBy("ticket.createdAt", "DESC");
+
+    const totalItems = await query.getCount();
+    const skip = (page - 1) * limit;
+    const items = await query.skip(skip).take(limit).getMany();
+
+    return { items, totalItems };
+  }
+
+  async userMarkResolved(ticketId: string, user: User): Promise<Ticket> {
+    const ticket = await this.findOne(ticketId, user);
+
+    // Only ticket creator can mark as resolved through this method
+    if (ticket.createdById  !== user.id) {
+      throw new ForbiddenException("Only the ticket creator can mark their ticket as resolved");
+    }
+
+    ticket.status = TicketStatus.RESOLVED;
+    ticket.resolvedAt = new Date();
+
+    const savedTicket = await this.ticketsRepository.save(ticket);
+    return this.findOne(savedTicket.id, null);
   }
 }

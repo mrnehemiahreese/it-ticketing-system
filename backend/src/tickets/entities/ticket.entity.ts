@@ -111,4 +111,33 @@ export class Ticket {
   @Field({ nullable: true })
   @Column({ nullable: true })
   closedAt?: Date;
+
+  // SLA-related fields
+  @Field({ nullable: true })
+  @Column({ nullable: true })
+  slaPolicyId?: string;
+
+  @Field({ nullable: true })
+  @Column({ nullable: true })
+  slaResponseDueAt?: Date;
+
+  @Field({ nullable: true })
+  @Column({ nullable: true })
+  slaResolutionDueAt?: Date;
+
+  @Field({ nullable: true })
+  @Column({ nullable: true })
+  slaResponseMetAt?: Date;
+
+  @Field({ nullable: true })
+  @Column({ default: false })
+  slaBreached?: boolean;
+
+  @Field({ nullable: true })
+  @Column({ nullable: true })
+  escalatedAt?: Date;
+
+  @Field({ nullable: true })
+  @Column({ nullable: true })
+  escalatedToId?: string;
 }
