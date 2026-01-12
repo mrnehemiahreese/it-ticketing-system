@@ -57,8 +57,8 @@
 
         <!-- Sidebar -->
         <v-col cols="12" md="4">
-          <!-- Actions Card -->
-          <v-card elevation="2" class="mb-4">
+          <!-- Actions Card (Agents/Admins only) -->
+          <v-card v-if="authStore.isAdmin || authStore.isAgent" elevation="2" class="mb-4">
             <v-card-title>Actions</v-card-title>
             <v-divider />
             <v-card-text>

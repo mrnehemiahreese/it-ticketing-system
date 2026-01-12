@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { App } from '@slack/bolt';
@@ -135,12 +137,50 @@ export class SlackService implements OnModuleInit {
       const threadTs = await this.sendSlackMessage(message);
 
       this.logger.log(`Ticket ${ticket.ticketNumber} notified to Slack with thread ${threadTs}`);
+
+      // Upload any image attachments to the thread
+      if (ticket.attachments && ticket.attachments.length > 0 && threadTs) {
+        await this.uploadAttachmentsToThread(ticket.attachments, threadTs);
+      }
+
       return threadTs;
     } catch (error) {
       this.logger.error(`Failed to notify Slack for ticket creation: ${error.message}`);
       return null;
     }
   }
+
+  /**
+   * Upload attachments to a Slack thread
+   */
+  private async uploadAttachmentsToThread(attachments: any[], threadTs: string): Promise<void> {
+    const imageAttachments = attachments.filter(a => a.mimetype?.startsWith('image/'));
+    
+    for (const attachment of imageAttachments) {
+      try {
+        const filePath = path.join(process.cwd(), attachment.filepath);
+        
+        if (!fs.existsSync(filePath)) {
+          this.logger.warn(`Attachment file not found: ${filePath}`);
+          continue;
+        }
+
+        await this.app.client.files.uploadV2({
+          channel_id: this.defaultChannel.replace('#', ''),
+          thread_ts: threadTs,
+          file: fs.createReadStream(filePath),
+          filename: attachment.filename,
+          title: attachment.filename,
+          initial_comment: `📎 Attached: ${attachment.filename}`,
+        });
+
+        this.logger.log(`Uploaded attachment ${attachment.filename} to Slack thread`);
+      } catch (error) {
+        this.logger.error(`Failed to upload attachment ${attachment.filename}: ${error.message}`);
+      }
+    }
+  }
+
 
   /**
    * Send ticket update notification to Slack
