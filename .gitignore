@@ -1,0 +1,96 @@
+# ==========================================
+# IT Ticketing System - .gitignore
+# ==========================================
+
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.crt
+
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+build/
+.next/
+.nuxt/
+
+# macOS
+.DS_Store
+._*
+.AppleDouble
+.LSOverride
+.Spotlight-V100
+.Trashes
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Testing
+coverage/
+.nyc_output/
+
+# Docker
+docker-compose.override.yml
+
+# Database
+*.sql
+!migrations/*.sql
+!seeds/*.sql
+
+# Uploads (user-generated)
+uploads/
+backend/uploads/
+
+# Backups
+*.bak
+*.backup
+backup-*.sql
+
+# Deployment-specific
+ACCESS_INFO.txt
+*.tar.gz
+
+# Shell scripts with local config
+deploy-*.sh
+map-*.sh
+create-users.sh
+
+# SSL certs (keep nginx/ssl directory structure)
+nginx/ssl/*.pem
+nginx/ssl/*.crt
+nginx/ssl/*.key
+
+# Local development
+.cache/
+.tmp/
+.temp/
+
+# TypeScript
+*.tsbuildinfo
+
+# Runtime
+*.pid
+*.seed
+*.pid.lock
+# Backup files
+*.bak*
+*.tmp
+*.backup*

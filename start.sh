@@ -1,0 +1,15 @@
+#!/bin/bash
+echo "🚀 Starting IT Ticketing System..."
+docker-compose up -d
+echo ""
+echo "✅ System started!"
+echo ""
+echo "📍 Access points:"
+echo "   Frontend: http://localhost:3000"
+echo "   Backend:  http://localhost:4000/graphql"
+echo ""
+echo "👤 Default login:"
+echo "   Username: admin"
+echo "   Password: Admin123!"
+echo ""
+echo "📋 View logs: docker-compose logs -f"
