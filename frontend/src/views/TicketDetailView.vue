@@ -156,11 +156,11 @@
               <div class="mb-4">
                 <div class="text-caption text-grey mb-2">Created By</div>
                 <div class="d-flex align-center">
-                  <v-avatar :color="getAvatarColor(ticket.createdBy.firstName)" size="40" class="mr-3">
-                    <span>{{ getInitials(ticket.createdBy.firstName, ticket.createdBy.lastName) }}</span>
+                  <v-avatar :color="getAvatarColor(ticket.createdBy?.fullname)" size="40" class="mr-3">
+                    <span>{{ getInitialsFromFullname(ticket.createdBy?.fullname) }}</span>
                   </v-avatar>
                   <div>
-                    <div class="font-weight-medium">{{ ticket.createdBy.firstName }} {{ ticket.createdBy.lastName }}</div>
+                    <div class="font-weight-medium">{{ ticket.createdBy?.fullname }}</div>
                     <div class="text-caption text-grey">{{ ticket.createdBy.email }}</div>
                   </div>
                 </div>
@@ -170,11 +170,11 @@
               <div class="mb-4">
                 <div class="text-caption text-grey mb-2">Assigned To</div>
                 <div v-if="ticket.assignedTo" class="d-flex align-center">
-                  <v-avatar :color="getAvatarColor(ticket.assignedTo.firstName)" size="40" class="mr-3">
-                    <span>{{ getInitials(ticket.assignedTo.firstName, ticket.assignedTo.lastName) }}</span>
+                  <v-avatar :color="getAvatarColor(ticket.assignedTo?.fullname)" size="40" class="mr-3">
+                    <span>{{ getInitialsFromFullname(ticket.assignedTo?.fullname) }}</span>
                   </v-avatar>
                   <div>
-                    <div class="font-weight-medium">{{ ticket.assignedTo.firstName }} {{ ticket.assignedTo.lastName }}</div>
+                    <div class="font-weight-medium">{{ ticket.assignedTo?.fullname }}</div>
                     <div class="text-caption text-grey">{{ ticket.assignedTo.email }}</div>
                   </div>
                 </div>
@@ -340,7 +340,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useQuery, useMutation } from '@vue/apollo-composable'
 import { useAuthStore } from '@/stores/auth'
@@ -405,6 +405,21 @@ const { mutate: updateStatus } = useMutation(UPDATE_TICKET_STATUS)
 const { mutate: assignTicket } = useMutation(ASSIGN_TICKET)
 const { mutate: createComment } = useMutation(CREATE_COMMENT)
 const { mutate: deleteComment } = useMutation(DELETE_COMMENT)
+
+// Auto-refresh comments every 15 seconds
+let pollInterval = null
+
+onMounted(() => {
+  pollInterval = setInterval(() => {
+    refetch()
+  }, 15000)
+})
+
+onUnmounted(() => {
+  if (pollInterval) {
+    clearInterval(pollInterval)
+  }
+})
 
 // Initialize status
 watch(ticket, (newTicket) => {
@@ -476,6 +491,13 @@ async function handleDeleteComment(comment) {
   } catch (err) {
     notificationStore.error(parseGraphQLError(err))
   }
+}
+
+function getInitialsFromFullname(fullname) {
+  if (!fullname) return "?"
+  const parts = fullname.trim().split(" ")
+  if (parts.length === 1) return parts[0].charAt(0).toUpperCase()
+  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
 }
 
 function getCategoryLabel(category) {

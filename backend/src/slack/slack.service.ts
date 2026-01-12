@@ -201,13 +201,13 @@ export class SlackService implements OnModuleInit {
    */
   private buildTicketCreatedMessage(ticket: Ticket): any {
     return {
-      text: `New Ticket: ${ticket.ticketNumber}`,
+      text: `${ticket.title} (${ticket.ticketNumber})`,
       blocks: [
         {
           type: 'header',
           text: {
             type: 'plain_text',
-            text: `🎫 New Ticket: ${ticket.ticketNumber}`,
+            text: `🎫 ${ticket.title}`,
             emoji: true,
           },
         },
