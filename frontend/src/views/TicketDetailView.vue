@@ -237,7 +237,7 @@
                 >
                   <v-card @click="openImageModal(attachment)" class="cursor-pointer">
                     <v-img
-                      :src="`${getAttachmentUrl(\'\')}/${attachment.id}`"
+                      :src="getAttachmentUrl(attachment.id)"
                       :alt="attachment.filename"
                       cover
                       height="300"
@@ -317,7 +317,7 @@
             style="cursor: grab; width: 100%; height: 100%; position: relative;"
           >
             <img
-              :src="`${getAttachmentUrl(\'\')}/${currentImageAttachment.id}`"
+              :src="getAttachmentUrl(currentImageAttachment.id)"
               :alt="currentImageAttachment.filename"
               :style="{
                 maxHeight: '100%',
@@ -568,7 +568,7 @@ function getFileIcon(mimeType) {
 }
 
 function handleAttachmentClick(attachment) {
-  const url = `${getAttachmentUrl(\'\')}/${attachment.id}`
+  const url = getAttachmentUrl(attachment.id)
   const token = authStore.token
 
   // For images, open in modal
@@ -654,7 +654,7 @@ function handleMouseWheel(event) {
 function downloadImage() {
   if (!currentImageAttachment.value) return
   
-  const url = `${getAttachmentUrl(\'\')}/${currentImageAttachment.value.id}`
+  const url = getAttachmentUrl(currentImageAttachment.value.id)
   const a = document.createElement('a')
   a.href = url
   a.download = currentImageAttachment.value.filename
