@@ -17,6 +17,8 @@ import { SlackModule } from './slack/slack.module';
 import { KnowledgeBaseModule } from './knowledge-base/knowledge-base.module';
 import { PortalModule } from './portal/portal.module';
 import { SurveysModule } from './surveys/surveys.module';
+import { PubSubModule } from './pubsub/pubsub.module';
+import { SlaModule } from './sla/sla.module';
 
 // Entity imports
 import { User } from './users/entities/user.entity';
@@ -26,6 +28,7 @@ import { Comment } from './comments/entities/comment.entity';
 import { Attachment } from './attachments/entities/attachment.entity';
 import { KnowledgeArticle } from './database/entities/knowledge-article.entity';
 import { SurveyResponse } from './surveys/entities/survey-response.entity';
+import { SlaPolicy } from './sla/entities/sla-policy.entity';
 
 @Module({
   imports: [
@@ -38,7 +41,7 @@ import { SurveyResponse } from './surveys/entities/survey-response.entity';
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
         url: configService.get<string>('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/ticketing_system'),
-        entities: [User, Ticket, TicketWatcher, Comment, Attachment, KnowledgeArticle, SurveyResponse],
+        entities: [User, Ticket, TicketWatcher, Comment, Attachment, KnowledgeArticle, SurveyResponse, SlaPolicy],
         synchronize: configService.get<string>('NODE_ENV') === 'development',
         logging: configService.get<string>('NODE_ENV') === 'development',
         autoLoadEntities: true,
@@ -59,6 +62,17 @@ import { SurveyResponse } from './surveys/entities/survey-response.entity';
           path: error.path,
         };
       },
+      subscriptions: {
+        'graphql-ws': {
+          onConnect: (context: any) => {
+            const { connectionParams } = context;
+            if (connectionParams?.authToken) {
+              context.authToken = connectionParams.authToken;
+            }
+          },
+        },
+      },
+      installSubscriptionHandlers: true,
     }),
     AuthModule,
     UsersModule,
@@ -71,6 +85,8 @@ import { SurveyResponse } from './surveys/entities/survey-response.entity';
     KnowledgeBaseModule,
     PortalModule,
     SurveysModule,
+    PubSubModule,
+    SlaModule,
   ],
   controllers: [],
   providers: [],

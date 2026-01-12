@@ -8,6 +8,7 @@ import { Repository } from 'typeorm';
 import { Ticket } from '../tickets/entities/ticket.entity';
 import { Comment } from '../comments/entities/comment.entity';
 import { User } from '../users/entities/user.entity';
+import { Attachment } from '../attachments/entities/attachment.entity';
 import { Role } from '../common/enums/role.enum';
 
 @Injectable()
@@ -16,6 +17,7 @@ export class SlackService implements OnModuleInit {
   private app: App;
   private readonly slackEnabled: boolean;
   private readonly defaultChannel: string;
+  private defaultChannelId: string; // Store the channel ID separately for file uploads
 
   constructor(
     private configService: ConfigService,
@@ -25,11 +27,14 @@ export class SlackService implements OnModuleInit {
     private commentsRepository: Repository<Comment>,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    @InjectRepository(Attachment)
+    private attachmentsRepository: Repository<Attachment>,
   ) {
     const botToken = this.configService.get<string>('SLACK_BOT_TOKEN');
     const appToken = this.configService.get<string>('SLACK_APP_TOKEN');
     this.slackEnabled = this.configService.get<boolean>('SLACK_ENABLED', false);
     this.defaultChannel = this.configService.get<string>('SLACK_DEFAULT_CHANNEL', '#support-ticketing');
+    this.defaultChannelId = this.configService.get<string>('SLACK_DEFAULT_CHANNEL_ID', ''); // NEW: Channel ID from env or will be resolved
 
     // Initialize Slack App with Socket Mode
     if (this.slackEnabled && botToken && appToken) {
@@ -50,6 +55,11 @@ export class SlackService implements OnModuleInit {
   async onModuleInit() {
     if (!this.slackEnabled || !this.app) {
       return;
+    }
+
+    // Resolve channel ID if not configured
+    if (!this.defaultChannelId) {
+      await this.resolveChannelId();
     }
 
     // Listen for message events in threads
@@ -77,14 +87,13 @@ export class SlackService implements OnModuleInit {
             return;
           }
 
-          // Regular thread reply - create comment
-          this.logger.log(`Received thread reply from ${message.user}: ${text}`);
-          await this.handleSlackThreadMessage(
-            message.thread_ts,
-            message.user,
-            text,
-            client,
+          // Regular thread reply - create comment and process attachments
+          const msgAny = message as any;
+          this.logger.log(
+            `Received thread reply from ${message.user}` +
+            (msgAny.files ? ` with ${msgAny.files.length} file(s)` : '')
           );
+          await this.handleSlackThreadMessage(message, client);
         }
       } catch (error) {
         this.logger.error(`Error handling message event: ${error.message}`);
@@ -155,18 +164,24 @@ export class SlackService implements OnModuleInit {
    */
   private async uploadAttachmentsToThread(attachments: any[], threadTs: string): Promise<void> {
     const imageAttachments = attachments.filter(a => a.mimetype?.startsWith('image/'));
-    
+
     for (const attachment of imageAttachments) {
       try {
         const filePath = path.join(process.cwd(), attachment.filepath);
-        
+
         if (!fs.existsSync(filePath)) {
           this.logger.warn(`Attachment file not found: ${filePath}`);
           continue;
         }
 
+        // Use the resolved channel ID for file uploads
+        if (!this.defaultChannelId) {
+          this.logger.warn('Channel ID not resolved - skipping attachment upload');
+          continue;
+        }
+
         await this.app.client.files.uploadV2({
-          channel_id: this.defaultChannel.replace('#', ''),
+          channel_id: this.defaultChannelId,
           thread_ts: threadTs,
           file: fs.createReadStream(filePath),
           filename: attachment.filename,
@@ -181,6 +196,43 @@ export class SlackService implements OnModuleInit {
     }
   }
 
+
+  /**
+   * Upload a single attachment to Slack (called from AttachmentsService)
+   */
+  async uploadAttachmentToSlack(attachment: any, threadTs: string): Promise<void> {
+    if (!this.slackEnabled || !this.app) return;
+
+    if (!attachment.mimetype?.startsWith("image/")) return;
+
+    try {
+      const filePath = path.join(process.cwd(), attachment.filepath);
+
+      if (!fs.existsSync(filePath)) {
+        this.logger.warn(`Attachment file not found: ${filePath}`);
+        return;
+      }
+
+      // Use the resolved channel ID for file uploads
+      if (!this.defaultChannelId) {
+        this.logger.warn('Channel ID not resolved - skipping attachment upload');
+        return;
+      }
+
+      await this.app.client.files.uploadV2({
+        channel_id: this.defaultChannelId,
+        thread_ts: threadTs,
+        file: fs.createReadStream(filePath),
+        filename: attachment.filename,
+        title: attachment.filename,
+        initial_comment: `📎 Screenshot attached`,
+      });
+
+      this.logger.log(`Uploaded attachment ${attachment.filename} to Slack thread`);
+    } catch (error) {
+      this.logger.error(`Failed to upload attachment to Slack: ${error.message}`);
+    }
+  }
 
   /**
    * Send ticket update notification to Slack
@@ -233,6 +285,34 @@ export class SlackService implements OnModuleInit {
       this.logger.log(`Ticket ${ticket.ticketNumber} assignment notified to Slack`);
     } catch (error) {
       this.logger.error(`Failed to notify Slack for assignment: ${error.message}`);
+    }
+  }
+
+  /**
+   * Notify Slack when a user marks their own ticket as resolved
+   */
+  async notifyUserMarkedResolved(ticket: Ticket, user: User): Promise<void> {
+    if (!this.slackEnabled || !this.app) return;
+
+    try {
+      const message = {
+        text: `✅ ${user.fullname} marked their ticket "${ticket.title}" as resolved`,
+        blocks: [
+          {
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text: `✅ *${user.fullname}* marked their ticket *<${process.env.FRONTEND_URL || "http://localhost:3001"}/tickets/${ticket.id}|${ticket.title}>* as resolved.`,
+            },
+          },
+        ],
+      };
+
+      // Send to thread if exists, otherwise to channel
+      await this.sendSlackMessage(message, ticket.slackThreadTs);
+      this.logger.log(`User ${user.fullname} marked ticket ${ticket.ticketNumber} as resolved - notified Slack`);
+    } catch (error) {
+      this.logger.error(`Failed to notify Slack for user resolve: ${error.message}`);
     }
   }
 
@@ -480,15 +560,20 @@ export class SlackService implements OnModuleInit {
   }
 
   /**
-   * Handle incoming Slack message and create ticket comment
-   * Called when someone replies in a Slack thread
+   * Handle incoming Slack message in a ticket thread
+   * Creates comment for text and downloads any image attachments
+   * @param message Full Slack message event object
+   * @param slackClient Slack Web API client for user lookups
    */
   async handleSlackThreadMessage(
-    threadTs: string,
-    userId: string,
-    text: string,
-    slackClient?: any,
+    message: any,
+    slackClient: any,
   ): Promise<void> {
+    // Extract fields from message object
+    const threadTs = message.thread_ts;
+    const userId = message.user;
+    const text = message.text || '';
+
     try {
       // Find ticket by thread timestamp
       const ticket = await this.ticketsRepository.findOne({
@@ -502,7 +587,7 @@ export class SlackService implements OnModuleInit {
       }
 
       let commentUser = ticket.assignedTo || ticket.createdBy;
-      
+
       // Try to map Slack user ID to system user
       if (slackClient) {
         try {
@@ -531,18 +616,163 @@ export class SlackService implements OnModuleInit {
         }
       }
 
-      // Create comment in the ticketing system
-      const comment = this.commentsRepository.create({
-        content: text,
-        ticketId: ticket.id,
-        userId: commentUser.id,
-        isInternal: false,
-      });
+      // Create comment in the ticketing system (only if there's text)
+      if (text.trim()) {
+        const comment = this.commentsRepository.create({
+          content: text,
+          ticketId: ticket.id,
+          userId: commentUser.id,
+          isInternal: false,
+        });
 
-      await this.commentsRepository.save(comment);
-      this.logger.log(`Created comment from Slack thread for ticket ${ticket.ticketNumber} (user: ${commentUser.fullname})`);
+        await this.commentsRepository.save(comment);
+        this.logger.log(`Created comment from Slack thread for ticket ${ticket.ticketNumber} (user: ${commentUser.fullname})`);
+      }
+
+      // Process any attached image files
+      if ('files' in message && Array.isArray(message.files) && message.files.length > 0) {
+        // Filter for image files only
+        const imageFiles = message.files.filter(
+          (file: any) => file.mimetype?.startsWith('image/')
+        );
+
+        if (imageFiles.length > 0) {
+          this.logger.log(
+            `Processing ${imageFiles.length} image attachment(s) from Slack message`
+          );
+        }
+
+        // Process each image file
+        for (const fileInfo of imageFiles) {
+          try {
+            await this.handleSlackAttachment(fileInfo, ticket.id, commentUser.id);
+          } catch (error) {
+            // Log but don't fail entire message processing if one attachment fails
+            this.logger.error(
+              `Failed to process Slack attachment ${fileInfo.name}: ${error.message}`
+            );
+          }
+        }
+      }
     } catch (error) {
       this.logger.error(`Failed to handle Slack thread message: ${error.message}`);
+    }
+  }
+
+  /**
+   * Download a file from Slack using authenticated request
+   * Slack file URLs require the bot token in Authorization header
+   * @param fileInfo Slack file object with url_private_download
+   * @returns File contents as Buffer, or null if download fails
+   */
+  private async downloadSlackFile(fileInfo: any): Promise<Buffer | null> {
+    if (!fileInfo.url_private_download) {
+      this.logger.warn(`No download URL for file ${fileInfo.id}`);
+      return null;
+    }
+
+    try {
+      const response = await fetch(fileInfo.url_private_download, {
+        headers: {
+          Authorization: `Bearer ${this.configService.get('SLACK_BOT_TOKEN')}`,
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          const retryAfter = response.headers.get('Retry-After');
+          this.logger.warn(
+            `Rate limited by Slack for file ${fileInfo.id}. Retry after ${retryAfter}s`
+          );
+        } else if (response.status === 401 || response.status === 403) {
+          this.logger.error(
+            `Authentication failed downloading Slack file ${fileInfo.id}: ${response.status}`
+          );
+        } else {
+          this.logger.error(
+            `Failed to download Slack file ${fileInfo.id}: ${response.status} ${response.statusText}`
+          );
+        }
+        return null;
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+      return Buffer.from(arrayBuffer);
+    } catch (error) {
+      this.logger.error(`Error downloading Slack file ${fileInfo.id}: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Process an image attachment from a Slack message
+   * Downloads the file, saves to disk, and creates Attachment entity
+   * @param fileInfo Slack file object
+   * @param ticketId Ticket to attach the file to
+   * @param userId User who posted the file (for attribution)
+   */
+  private async handleSlackAttachment(
+    fileInfo: any,
+    ticketId: string,
+    userId: string,
+  ): Promise<void> {
+    this.logger.log(
+      `Processing Slack attachment: ${fileInfo.name} (${fileInfo.mimetype}, ${fileInfo.size} bytes)`
+    );
+
+    // Enforce file size limit (10MB)
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
+    if (fileInfo.size > MAX_FILE_SIZE) {
+      this.logger.warn(
+        `Skipping oversized attachment ${fileInfo.name}: ${fileInfo.size} bytes (limit: ${MAX_FILE_SIZE})`
+      );
+      return;
+    }
+
+    // Download file from Slack
+    const fileBuffer = await this.downloadSlackFile(fileInfo);
+    if (!fileBuffer) {
+      this.logger.warn(`Skipping attachment ${fileInfo.name} - download failed`);
+      return;
+    }
+
+    try {
+      // Create upload directory
+      const uploadDir = path.join(process.cwd(), 'uploads', ticketId);
+      await fs.promises.mkdir(uploadDir, { recursive: true });
+
+      // Generate unique filename with sanitization
+      const timestamp = Date.now();
+      const sanitizedName = fileInfo.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const filename = `${timestamp}-${sanitizedName}`;
+      const filepath = path.join(uploadDir, filename);
+
+      // Save file to disk
+      await fs.promises.writeFile(filepath, fileBuffer);
+
+      // Store relative path for database (portable across deployments)
+      const relativePath = path.join('uploads', ticketId, filename);
+
+      // Create attachment entity
+      const attachment = this.attachmentsRepository.create({
+        filename: fileInfo.name,
+        filepath: relativePath,
+        mimetype: fileInfo.mimetype,
+        size: fileInfo.size,
+        ticketId,
+        uploadedById: userId,
+      });
+
+      await this.attachmentsRepository.save(attachment);
+
+      this.logger.log(
+        `Saved Slack attachment ${fileInfo.name} to ticket (ID: ${attachment.id})`
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to save Slack attachment ${fileInfo.name}: ${error.message}`
+      );
+      throw error; // Propagate to caller for error handling
     }
   }
 
@@ -759,6 +989,49 @@ export class SlackService implements OnModuleInit {
   }
 
   /**
+   * Resolve Slack channel name to channel ID
+   * This is needed because files.uploadV2 requires a channel ID, not a channel name
+   */
+  private async resolveChannelId(): Promise<void> {
+    if (!this.slackEnabled || !this.app) {
+      return;
+    }
+
+    try {
+      const channelName = this.defaultChannel.startsWith('#')
+        ? this.defaultChannel.substring(1)
+        : this.defaultChannel;
+
+      // List conversations to find the channel ID
+      const result = await this.app.client.conversations.list({
+        exclude_archived: true,
+        limit: 100,
+      });
+
+      if (!result.ok) {
+        this.logger.error(`Failed to list Slack conversations: ${result.error}`);
+        return;
+      }
+
+      const channel = result.channels.find(
+        c => c.name === channelName || c.name === this.defaultChannel
+      );
+
+      if (channel && channel.id) {
+        this.defaultChannelId = channel.id;
+        this.logger.log(`Resolved Slack channel "${channelName}" to ID: ${this.defaultChannelId}`);
+      } else {
+        this.logger.warn(
+          `Could not find Slack channel "${channelName}" in workspace. ` +
+          `File uploads will fail. Make sure the channel exists and the bot is a member.`
+        );
+      }
+    } catch (error) {
+      this.logger.error(`Error resolving Slack channel ID: ${error.message}`);
+    }
+  }
+
+  /**
    * Utility functions
    */
   private getPriorityEmoji(priority: string): string {
@@ -785,5 +1058,129 @@ export class SlackService implements OnModuleInit {
   private truncateText(text: string, length: number): string {
     if (text.length <= length) return text;
     return text.substring(0, length) + '...';
+  }
+
+  /**
+   * Notify about SLA breach
+   */
+  async notifySlaBreached(ticket: any): Promise<void> {
+    if (!this.slackEnabled || !this.app) {
+      this.logger.warn("Slack not initialized, skipping SLA breach notification");
+      return;
+    }
+
+    try {
+      const text = `:warning: *SLA BREACHED* for ticket #${ticket.id.substring(0, 8)}`;
+      const blocks = [
+        {
+          type: "header",
+          text: {
+            type: "plain_text",
+            text: "SLA Breach Alert",
+            emoji: true,
+          },
+        },
+        {
+          type: "section",
+          fields: [
+            {
+              type: "mrkdwn",
+              text: `*Ticket:*\n${this.truncateText(ticket.title, 50)}`,
+            },
+            {
+              type: "mrkdwn",
+              text: `*Priority:*\n${this.getPriorityEmoji(ticket.priority)} ${ticket.priority}`,
+            },
+            {
+              type: "mrkdwn",
+              text: `*Status:*\n${this.getStatusEmoji(ticket.status)} ${ticket.status}`,
+            },
+            {
+              type: "mrkdwn",
+              text: `*Assigned To:*\n${ticket.assignedTo?.name || "Unassigned"}`,
+            },
+          ],
+        },
+        {
+          type: "context",
+          elements: [
+            {
+              type: "mrkdwn",
+              text: `SLA resolution deadline has been breached. Immediate action required.`,
+            },
+          ],
+        },
+      ];
+
+      await this.app.client.chat.postMessage({
+        channel: this.defaultChannelId,
+        text,
+        blocks,
+      });
+    } catch (error) {
+      this.logger.error(`Failed to send SLA breach notification: ${error.message}`);
+    }
+  }
+
+  /**
+   * Notify about ticket escalation
+   */
+  async notifyEscalation(ticket: any, escalatedTo: any): Promise<void> {
+    if (!this.slackEnabled || !this.app) {
+      this.logger.warn("Slack not initialized, skipping escalation notification");
+      return;
+    }
+
+    try {
+      const text = `:arrow_up: *ESCALATED* - Ticket #${ticket.id.substring(0, 8)} has been escalated`;
+      const blocks = [
+        {
+          type: "header",
+          text: {
+            type: "plain_text",
+            text: "Ticket Escalation",
+            emoji: true,
+          },
+        },
+        {
+          type: "section",
+          fields: [
+            {
+              type: "mrkdwn",
+              text: `*Ticket:*\n${this.truncateText(ticket.title, 50)}`,
+            },
+            {
+              type: "mrkdwn",
+              text: `*Priority:*\n${this.getPriorityEmoji(ticket.priority)} ${ticket.priority}`,
+            },
+            {
+              type: "mrkdwn",
+              text: `*Escalated To:*\n${escalatedTo?.name || "Unknown"}`,
+            },
+            {
+              type: "mrkdwn",
+              text: `*Previous Assignee:*\n${ticket.assignedTo?.name || "Unassigned"}`,
+            },
+          ],
+        },
+        {
+          type: "context",
+          elements: [
+            {
+              type: "mrkdwn",
+              text: `Ticket escalated due to SLA policy requirements.`,
+            },
+          ],
+        },
+      ];
+
+      await this.app.client.chat.postMessage({
+        channel: this.defaultChannelId,
+        text,
+        blocks,
+      });
+    } catch (error) {
+      this.logger.error(`Failed to send escalation notification: ${error.message}`);
+    }
   }
 }
