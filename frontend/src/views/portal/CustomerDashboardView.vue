@@ -100,9 +100,9 @@
                 <v-icon>{{ getStatusIcon(ticket.status) }}</v-icon>
               </v-avatar>
             </template>
-            <v-list-item-title>{{ ticket.ticketNumber }}: {{ ticket.title }}</v-list-item-title>
+            <v-list-item-title>{{ ticket.title }}</v-list-item-title>
             <v-list-item-subtitle>
-              Created {{ formatDate(ticket.createdAt) }}
+              {{ ticket.ticketNumber }} • Created {{ formatDate(ticket.createdAt) }}
             </v-list-item-subtitle>
             <template #append>
               <v-chip :color="getPriorityColor(ticket.priority)" size="small">

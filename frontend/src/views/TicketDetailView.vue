@@ -111,6 +111,24 @@
               </v-btn>
             </v-card-text>
           </v-card>
+          <!-- Archive Card (Admin only, closed tickets only) -->
+          <v-card v-if="authStore.isAdmin && ticket.status === 'CLOSED'" elevation="2" class="mb-4">
+            <v-card-title>Archive Ticket</v-card-title>
+            <v-divider />
+            <v-card-text>
+              <p class="text-body-2 mb-3">Move this closed ticket to the archive. Archived tickets won't appear in normal lists.</p>
+              <v-btn
+                color="blue-grey"
+                block
+                :loading="archiveLoading"
+                @click="archiveTicket"
+              >
+                <v-icon start>mdi-archive</v-icon>
+                Archive Ticket
+              </v-btn>
+            </v-card-text>
+          </v-card>
+
           <!-- Details Card -->
           <v-card elevation="2" class="mb-4">
             <v-card-title>Details</v-card-title>
@@ -365,7 +383,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useNotificationStore } from '@/stores/notification'
 import { GET_TICKET, GET_TECHNICIANS } from '@/graphql/queries'
 import { TICKET_UPDATED_SUBSCRIPTION, COMMENT_ADDED_SUBSCRIPTION } from '@/graphql/subscriptions'
-import { UPDATE_TICKET_STATUS, ASSIGN_TICKET, CREATE_COMMENT, DELETE_COMMENT, USER_MARK_RESOLVED } from '@/graphql/mutations'
+import { UPDATE_TICKET_STATUS, ASSIGN_TICKET, CREATE_COMMENT, DELETE_COMMENT, USER_MARK_RESOLVED, ARCHIVE_TICKET } from '@/graphql/mutations'
 import { formatDate, getInitials, getAvatarColor, formatFileSize, parseGraphQLError } from '@/utils/helpers'
 import { getAttachmentUrl } from '@/utils/api'
 import { TICKET_STATUS, TICKET_STATUS_LABELS, TICKET_STATUS_COLORS, TICKET_CATEGORY_LABELS, TICKET_CATEGORY_ICONS } from '@/utils/constants'
@@ -384,6 +402,7 @@ const selectedAgent = ref(null)
 const editingComment = ref(null)
 const statusLoading = ref(false)
 const resolveLoading = ref(false)
+const archiveLoading = ref(false)
 const assignLoading = ref(false)
 const commentLoading = ref(false)
 const imageModal = ref({
@@ -463,6 +482,7 @@ const { mutate: assignTicket } = useMutation(ASSIGN_TICKET)
 const { mutate: createComment } = useMutation(CREATE_COMMENT)
 const { mutate: deleteComment } = useMutation(DELETE_COMMENT)
 const { mutate: markResolved } = useMutation(USER_MARK_RESOLVED)
+const { mutate: doArchiveTicket } = useMutation(ARCHIVE_TICKET)
 
 // Initialize status
 watch(ticket, (newTicket) => {
@@ -500,6 +520,21 @@ async function userMarkResolved() {
     notificationStore.error(parseGraphQLError(err))
   } finally {
     resolveLoading.value = false
+  }
+}
+
+async function archiveTicket() {
+  archiveLoading.value = true
+  try {
+    await doArchiveTicket({
+      id: ticketId.value
+    })
+    notificationStore.success("Ticket has been archived")
+    router.push({ name: "Tickets" })
+  } catch (err) {
+    notificationStore.error(parseGraphQLError(err))
+  } finally {
+    archiveLoading.value = false
   }
 }
 

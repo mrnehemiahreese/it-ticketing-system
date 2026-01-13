@@ -86,6 +86,16 @@ export class TicketsResolver {
     return this.ticketsService.remove(id, user);
   }
 
+
+  @Mutation(() => Ticket)
+  async archiveTicket(
+    @Args("id") id: string,
+    @CurrentUser() user: User,
+  ): Promise<Ticket> {
+    const ticket = await this.ticketsService.archiveTicket(id, user);
+    await this.pubSub.publish(TICKET_UPDATED_EVENT, { ticketUpdated: ticket });
+    return ticket;
+  }
   @Mutation(() => TicketWatcher)
   async addWatcher(
     @Args('ticketId') ticketId: string,

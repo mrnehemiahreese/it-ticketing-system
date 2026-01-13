@@ -19,6 +19,7 @@ import { PortalModule } from './portal/portal.module';
 import { SurveysModule } from './surveys/surveys.module';
 import { PubSubModule } from './pubsub/pubsub.module';
 import { SlaModule } from './sla/sla.module';
+import { TasksModule } from './tasks/tasks.module';
 
 // Entity imports
 import { User } from './users/entities/user.entity';
@@ -87,6 +88,7 @@ import { SlaPolicy } from './sla/entities/sla-policy.entity';
     SurveysModule,
     PubSubModule,
     SlaModule,
+    TasksModule,
   ],
   controllers: [],
   providers: [],

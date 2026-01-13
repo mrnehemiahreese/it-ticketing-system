@@ -112,6 +112,10 @@ export class Ticket {
   @Column({ nullable: true })
   closedAt?: Date;
 
+  @Field({ nullable: true })
+  @Column({ nullable: true })
+  archivedAt?: Date;
+
   // SLA-related fields
   @Field({ nullable: true })
   @Column({ nullable: true })

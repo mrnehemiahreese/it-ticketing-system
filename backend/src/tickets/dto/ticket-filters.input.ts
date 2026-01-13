@@ -34,4 +34,8 @@ export class TicketFiltersInput {
   @Field({ nullable: true })
   @IsOptional()
   search?: string;
+
+  @Field({ nullable: true, defaultValue: false })
+  @IsOptional()
+  includeArchived?: boolean;
 }

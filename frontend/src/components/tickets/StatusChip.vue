@@ -40,7 +40,8 @@ const statusIcon = computed(() => {
     IN_PROGRESS: 'mdi-clock-outline',
     RESOLVED: 'mdi-check-circle',
     CLOSED: 'mdi-close-circle',
-    ON_HOLD: 'mdi-pause-circle'
+    ON_HOLD: 'mdi-pause-circle',
+    ARCHIVED: 'mdi-archive'
   }
   return icons[props.status] || 'mdi-circle'
 })

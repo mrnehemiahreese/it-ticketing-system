@@ -8,6 +8,7 @@ export enum TicketStatus {
   RESOLVED = 'RESOLVED',
   CLOSED = 'CLOSED',
   REOPENED = 'REOPENED',
+  ARCHIVED = 'ARCHIVED',
 }
 
 registerEnumType(TicketStatus, {

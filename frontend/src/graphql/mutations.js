@@ -270,3 +270,13 @@ export const USER_MARK_RESOLVED = gql`
     }
   }
 `
+
+export const ARCHIVE_TICKET = gql`
+  mutation ArchiveTicket($id: String!) {
+    archiveTicket(id: $id) {
+      id
+      status
+      archivedAt
+    }
+  }
+`

@@ -68,6 +68,11 @@ export class TicketsService {
       );
     }
 
+    // Exclude archived tickets by default
+    if (!filters?.includeArchived) {
+      query.andWhere('ticket.status != :archivedStatus', { archivedStatus: TicketStatus.ARCHIVED });
+    }
+
     if (filters) {
       if (filters.status) {
         query.andWhere('ticket.status = :status', { status: filters.status });
@@ -304,6 +309,11 @@ export class TicketsService {
       );
     }
 
+    // Exclude archived tickets by default
+    if (!filters?.includeArchived) {
+      query.andWhere('ticket.status != :archivedStatus', { archivedStatus: TicketStatus.ARCHIVED });
+    }
+
     if (filters) {
       if (filters.status) {
         query.andWhere("ticket.status = :status", { status: filters.status });
@@ -350,5 +360,42 @@ export class TicketsService {
 
     const savedTicket = await this.ticketsRepository.save(ticket);
     return this.findOne(savedTicket.id, null);
+  }
+
+  async archiveTicket(ticketId: string, user: User): Promise<Ticket> {
+    const ticket = await this.findOne(ticketId, user);
+
+    // Only closed tickets can be archived
+    if (ticket.status !== TicketStatus.CLOSED) {
+      throw new ForbiddenException('Only closed tickets can be archived');
+    }
+
+    // Only admins can archive
+    if (!user.roles.includes(Role.ADMIN)) {
+      throw new ForbiddenException('Only administrators can archive tickets');
+    }
+
+    ticket.status = TicketStatus.ARCHIVED;
+    ticket.archivedAt = new Date();
+
+    const savedTicket = await this.ticketsRepository.save(ticket);
+    return this.findOne(savedTicket.id, null);
+  }
+
+  async autoArchiveClosedTickets(): Promise<number> {
+    const tenHoursAgo = new Date(Date.now() - 10 * 60 * 60 * 1000);
+    
+    const result = await this.ticketsRepository
+      .createQueryBuilder()
+      .update()
+      .set({ 
+        status: TicketStatus.ARCHIVED,
+        archivedAt: new Date()
+      })
+      .where('status = :status', { status: TicketStatus.CLOSED })
+      .andWhere('closedAt <= :cutoff', { cutoff: tenHoursAgo })
+      .execute();
+
+    return result.affected || 0;
   }
 }
