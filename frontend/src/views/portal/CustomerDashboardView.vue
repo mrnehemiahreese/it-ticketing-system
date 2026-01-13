@@ -7,6 +7,13 @@
       </v-col>
     </v-row>
 
+    <!-- Verse of the Day -->
+    <v-row class="mb-4">
+      <v-col cols="12" md="8">
+        <VerseOfTheDay />
+      </v-col>
+    </v-row>
+
     <!-- Loading State -->
     <v-row v-if="loading">
       <v-col class="text-center">
@@ -137,6 +144,7 @@ import { useQuery } from '@vue/apollo-composable'
 import { useAuthStore } from '@/stores/auth'
 import gql from 'graphql-tag'
 import { format, formatDistanceToNow } from 'date-fns'
+import VerseOfTheDay from '@/components/common/VerseOfTheDay.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()

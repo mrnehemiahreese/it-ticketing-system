@@ -2,6 +2,13 @@
     <div>
       <h1 class="text-h4 font-weight-bold mb-6">Dashboard</h1>
 
+      <!-- Verse of the Day -->
+      <v-row class="mb-6">
+        <v-col cols="12" md="6">
+          <VerseOfTheDay />
+        </v-col>
+      </v-row>
+
       <!-- Stats Cards -->
       <v-row class="mb-6">
         <v-col cols="12" sm="6" md="3">
@@ -219,6 +226,7 @@ import { GET_TICKETS } from '@/graphql/queries'
 import { NEW_TICKET_SUBSCRIPTION } from '@/graphql/subscriptions'
 import { formatRelativeTime, getInitials, getAvatarColor } from '@/utils/helpers'
 import StatsCard from '@/components/common/StatsCard.vue'
+import VerseOfTheDay from '@/components/common/VerseOfTheDay.vue'
 import StatusChip from '@/components/tickets/StatusChip.vue'
 import PriorityChip from '@/components/tickets/PriorityChip.vue'
 
