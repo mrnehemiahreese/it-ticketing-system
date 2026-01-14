@@ -108,7 +108,7 @@ async function bootstrap() {
   console.log(`📊 GraphQL Playground: http://localhost:${port}/graphql`);
   console.log(`🔒 Security: Rate limiting enabled, Helmet active`);
   console.log(`🤖 Slack Integration: Enabled`);
-  console.log(`\n✅ IT Ticketing System Backend Ready!\n`);
+  console.log(`\n✅ TM Support Portal Backend Ready!\n`);
 }
 
 bootstrap();

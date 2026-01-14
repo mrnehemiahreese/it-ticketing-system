@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { App } from '@slack/bolt';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -10,6 +10,9 @@ import { Comment } from '../comments/entities/comment.entity';
 import { User } from '../users/entities/user.entity';
 import { Attachment } from '../attachments/entities/attachment.entity';
 import { Role } from '../common/enums/role.enum';
+import { TicketStatus } from '../common/enums/ticket-status.enum';
+import { PubSub } from 'graphql-subscriptions';
+import { PUB_SUB } from '../pubsub/pubsub.module';
 
 @Injectable()
 export class SlackService implements OnModuleInit {
@@ -29,6 +32,7 @@ export class SlackService implements OnModuleInit {
     private usersRepository: Repository<User>,
     @InjectRepository(Attachment)
     private attachmentsRepository: Repository<Attachment>,
+    @Inject(PUB_SUB) private pubSub: PubSub,
   ) {
     const botToken = this.configService.get<string>('SLACK_BOT_TOKEN');
     const appToken = this.configService.get<string>('SLACK_APP_TOKEN');
@@ -87,6 +91,31 @@ export class SlackService implements OnModuleInit {
             return;
           }
 
+          // Check for close command (only "close ticket" as standalone to prevent accidents)
+          if (text.match(/^\s*close\s+ticket\s*$/i)) {
+            this.logger.log(`Close command detected: ${text}`);
+            const result = await this.handleStatusCommand(
+              message.thread_ts,
+              "closed",
+              message.user,
+            );
+            await say({ text: result, thread_ts: message.thread_ts });
+            return;
+          }
+
+          // Check for status command (supports: "status <STATUS>" or "update status to <STATUS>")
+          const statusMatch = text.match(/\b(?:status|update\s+status\s+to)\s+(open|in[_\s]?progress|resolved|closed|pending)/i);
+          if (statusMatch) {
+            this.logger.log(`Status command detected: ${text}`);
+            const result = await this.handleStatusCommand(
+              message.thread_ts,
+              statusMatch[1],
+              message.user,
+            );
+            await say({ text: result, thread_ts: message.thread_ts });
+            return;
+          }
+
           // Regular thread reply - create comment and process attachments
           const msgAny = message as any;
           this.logger.log(
@@ -121,6 +150,56 @@ export class SlackService implements OnModuleInit {
         this.logger.error(`Error handling app_mention: ${error.message}`);
       }
     });
+
+
+    // Handle view_ticket button - just acknowledge (URL opens in browser)
+    this.app.action("view_ticket", async ({ ack }) => {
+      await ack();
+    });
+
+    // Handle mark_in_progress button - auto-assigns to clicker
+    this.app.action("mark_in_progress", async ({ ack, body, client }) => {
+      await ack();
+      try {
+        const ticketId = (body as any).actions?.[0]?.value;
+        const slackUserId = (body as any).user?.id;
+        if (!ticketId) return;
+
+        const ticket = await this.ticketsRepository.findOne({ 
+          where: { id: ticketId },
+          relations: ["assignedTo"]
+        });
+        if (!ticket) return;
+
+        // Update ticket status to IN_PROGRESS
+        ticket.status = TicketStatus.IN_PROGRESS;
+
+        // Auto-assign to the user who clicked the button
+        let assignedUserName = "Unknown";
+        if (slackUserId) {
+          const user = await this.usersRepository.findOne({ where: { slackUserId } });
+          if (user) {
+            ticket.assignedToId = user.id;
+            assignedUserName = user.fullname;
+          }
+        }
+
+        await this.ticketsRepository.save(ticket);
+
+        // Post confirmation in thread
+        if (ticket.slackThreadTs) {
+          await client.chat.postMessage({
+            channel: this.defaultChannelId,
+            thread_ts: ticket.slackThreadTs,
+            text: `✅ Ticket marked as In Progress and assigned to ${assignedUserName}`,
+          });
+        }
+        this.logger.log(`Ticket ${ticket.ticketNumber} marked as In Progress and assigned to ${assignedUserName}`);
+      } catch (error) {
+        this.logger.error(`Error handling mark_in_progress: ${error.message}`);
+      }
+    });
+
 
     // Start the Socket Mode connection
     try {
@@ -383,7 +462,7 @@ export class SlackService implements OnModuleInit {
                 emoji: true,
               },
               value: ticket.id,
-              url: `http://192.168.1.2:3001/ticket/${ticket.id}`,
+              url: `${process.env.FRONTEND_URL || "https://tickets.birdherd.asia"}/tickets/${ticket.id}`,
               action_id: 'view_ticket',
             },
             {
@@ -450,7 +529,7 @@ export class SlackService implements OnModuleInit {
                 text: 'View Ticket',
                 emoji: true,
               },
-              url: `http://192.168.1.2:3001/ticket/${ticket.id}`,
+              url: `${process.env.FRONTEND_URL || "https://tickets.birdherd.asia"}/tickets/${ticket.id}`,
               action_id: 'view_ticket',
             },
           ],
@@ -483,7 +562,7 @@ export class SlackService implements OnModuleInit {
                 text: 'View Ticket',
                 emoji: true,
               },
-              url: `http://192.168.1.2:3001/ticket/${ticket.id}`,
+              url: `${process.env.FRONTEND_URL || "https://tickets.birdherd.asia"}/tickets/${ticket.id}`,
               action_id: 'view_ticket',
             },
           ],
@@ -516,7 +595,7 @@ export class SlackService implements OnModuleInit {
                 text: 'View Ticket',
                 emoji: true,
               },
-              url: `http://192.168.1.2:3001/ticket/${ticket.id}`,
+              url: `${process.env.FRONTEND_URL || "https://tickets.birdherd.asia"}/tickets/${ticket.id}`,
               action_id: 'view_ticket',
             },
           ],
@@ -625,7 +704,20 @@ export class SlackService implements OnModuleInit {
           isInternal: false,
         });
 
-        await this.commentsRepository.save(comment);
+        const savedComment = await this.commentsRepository.save(comment);
+        // Fetch full comment with user relation for subscription
+        const fullComment = await this.commentsRepository.findOne({
+          where: { id: savedComment.id },
+          relations: ["user", "ticket"],
+        });
+        // Ensure ticketId is set (TypeORM may not include FK when loading relations)
+        if (fullComment && !fullComment.ticketId && fullComment.ticket) {
+          fullComment.ticketId = fullComment.ticket.id;
+        }
+        // Publish to subscription
+        if (fullComment) {
+          this.pubSub.publish("commentAdded", { commentAdded: fullComment });
+        }
         this.logger.log(`Created comment from Slack thread for ticket ${ticket.ticketNumber} (user: ${commentUser.fullname})`);
       }
 
@@ -780,6 +872,58 @@ export class SlackService implements OnModuleInit {
    * Enhanced /assign command handler with Slack user ID mapping
    * Supports: /assign @SlackUser
    */
+
+  /**
+   * Handle status update command from Slack
+   */
+  async handleStatusCommand(threadTs: string, statusText: string, slackUserId: string): Promise<string> {
+    try {
+      const ticket = await this.ticketsRepository.findOne({
+        where: { slackThreadTs: threadTs },
+      });
+
+      if (!ticket) {
+        return "❌ Could not find ticket for this thread.";
+      }
+
+      // Normalize status text
+      const normalizedStatus = statusText.toLowerCase().replace(/[\s_]+/g, "_");
+      let newStatus: TicketStatus;
+
+      switch (normalizedStatus) {
+        case "open":
+          newStatus = TicketStatus.OPEN;
+          break;
+        case "in_progress":
+        case "inprogress":
+          newStatus = TicketStatus.IN_PROGRESS;
+          break;
+        case "resolved":
+          newStatus = TicketStatus.RESOLVED;
+          ticket.resolvedAt = new Date();
+          break;
+        case "closed":
+          newStatus = TicketStatus.CLOSED;
+          ticket.closedAt = new Date();
+          break;
+        case "pending":
+          newStatus = TicketStatus.PENDING;
+          break;
+        default:
+          return `❌ Unknown status: ${statusText}. Valid statuses: open, in_progress, resolved, closed, pending`;
+      }
+
+      ticket.status = newStatus;
+      await this.ticketsRepository.save(ticket);
+
+      this.logger.log(`Ticket ${ticket.ticketNumber} status updated to ${newStatus} via Slack command`);
+      return `✅ Ticket ${ticket.ticketNumber} status updated to ${newStatus}`;
+    } catch (error) {
+      this.logger.error(`Failed to handle status command: ${error.message}`);
+      return "❌ Failed to update ticket status.";
+    }
+  }
+
   async handleAssignCommandEnhanced(
     threadTs: string,
     messageText: string,

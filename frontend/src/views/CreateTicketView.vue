@@ -64,22 +64,54 @@
                     </v-select>
                   </v-col>
 
-                  <!-- Category -->
+                  <!-- Category (Parent) -->
                   <v-col cols="12" md="6">
                     <v-select
-                      v-model="formData.category"
+                      v-model="selectedParentCategory"
                       label="Category"
-                      :items="categoryOptions"
-                      item-title="label"
-                      item-value="value"
+                      :items="parentCategories"
+                      item-title="name"
+                      item-value="id"
                       :rules="[rules.required]"
                       variant="outlined"
                       density="comfortable"
+                      :loading="categoriesLoading"
+                      @update:model-value="handleParentCategoryChange"
                     >
                       <template v-slot:item="{ props, item }">
                         <v-list-item v-bind="props">
                           <template v-slot:prepend>
-                            <v-icon>{{ item.raw.icon }}</v-icon>
+                            <v-icon :color="item.raw.color">{{ item.raw.icon || 'mdi-folder' }}</v-icon>
+                          </template>
+                        </v-list-item>
+                      </template>
+                      <template v-slot:selection="{ item }">
+                        <v-icon :color="item.raw.color" class="mr-2">{{ item.raw.icon || 'mdi-folder' }}</v-icon>
+                        {{ item.raw.name }}
+                      </template>
+                    </v-select>
+                  </v-col>
+                </v-row>
+
+                <!-- Sub-Category (if parent has children) -->
+                <v-row v-if="subCategories.length > 0">
+                  <v-col cols="12" md="6" offset-md="6">
+                    <v-select
+                      v-model="formData.categoryId"
+                      label="Sub-Category"
+                      :items="subCategories"
+                      item-title="name"
+                      item-value="id"
+                      variant="outlined"
+                      density="comfortable"
+                      clearable
+                      hint="Optional: Select a more specific category"
+                      persistent-hint
+                    >
+                      <template v-slot:item="{ props, item }">
+                        <v-list-item v-bind="props">
+                          <template v-slot:prepend>
+                            <v-icon size="small" :color="item.raw.color">{{ item.raw.icon || 'mdi-folder-outline' }}</v-icon>
                           </template>
                         </v-list-item>
                       </template>
@@ -94,7 +126,7 @@
                   placeholder="e.g., DESK-123, Laptop-456"
                   variant="outlined"
                   density="comfortable"
-                  class="mb-4"
+                  class="mb-4 mt-4"
                 />
 
                 <!-- Attachments -->
@@ -248,16 +280,38 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { useMutation } from '@vue/apollo-composable'
+import { useMutation, useQuery } from '@vue/apollo-composable'
 import { useNotificationStore } from '@/stores/notification'
 import { useAuthStore } from '@/stores/auth'
 import { CREATE_TICKET } from '@/graphql/mutations'
-import { VALIDATION_RULES, TICKET_PRIORITY, TICKET_PRIORITY_LABELS, TICKET_PRIORITY_COLORS, TICKET_CATEGORY, TICKET_CATEGORY_LABELS, TICKET_CATEGORY_ICONS } from '@/utils/constants'
+import { VALIDATION_RULES, TICKET_PRIORITY, TICKET_PRIORITY_LABELS, TICKET_PRIORITY_COLORS } from '@/utils/constants'
 import { parseGraphQLError } from '@/utils/helpers'
 import { getUploadUrl } from '@/utils/api'
 import AttachmentUpload from '@/components/common/AttachmentUpload.vue'
+import gql from 'graphql-tag'
+
+// GraphQL query for categories
+const GET_CATEGORY_TREE = gql`
+  query GetCategoryTree {
+    categoryTree {
+      id
+      name
+      description
+      icon
+      color
+      isActive
+      children {
+        id
+        name
+        icon
+        color
+        isActive
+      }
+    }
+  }
+`
 
 const router = useRouter()
 const notificationStore = useNotificationStore()
@@ -266,12 +320,13 @@ const authStore = useAuthStore()
 const formRef = ref(null)
 const loading = ref(false)
 const attachments = ref([])
+const selectedParentCategory = ref(null)
 
 const formData = ref({
   title: '',
   description: '',
   priority: 'MEDIUM',
-  category: '',
+  categoryId: null,
   workstationNumber: ''
 })
 
@@ -285,24 +340,58 @@ const priorityOptions = Object.keys(TICKET_PRIORITY).map(key => ({
   icon: key === 'URGENT' ? 'mdi-fire' : key === 'HIGH' ? 'mdi-chevron-up' : key === 'MEDIUM' ? 'mdi-minus' : 'mdi-chevron-down'
 }))
 
-// Category options
-const categoryOptions = Object.keys(TICKET_CATEGORY).map(key => ({
-  value: TICKET_CATEGORY[key],
-  label: TICKET_CATEGORY_LABELS[key],
-  icon: TICKET_CATEGORY_ICONS[key]
-}))
+// Fetch categories from API
+const { result: categoriesResult, loading: categoriesLoading } = useQuery(GET_CATEGORY_TREE)
+
+// Parent categories (top-level, active only)
+const parentCategories = computed(() => {
+  if (!categoriesResult.value?.categoryTree) return []
+  return categoriesResult.value.categoryTree.filter(c => c.isActive)
+})
+
+// Sub-categories based on selected parent
+const subCategories = computed(() => {
+  if (!selectedParentCategory.value || !categoriesResult.value?.categoryTree) return []
+  const parent = categoriesResult.value.categoryTree.find(c => c.id === selectedParentCategory.value)
+  if (!parent?.children) return []
+  return parent.children.filter(c => c.isActive)
+})
+
+// Handle parent category change
+function handleParentCategoryChange(parentId) {
+  // Reset sub-category when parent changes
+  formData.value.categoryId = null
+  // If parent has no children, use the parent ID as the categoryId
+  if (parentId) {
+    const parent = categoriesResult.value?.categoryTree?.find(c => c.id === parentId)
+    if (!parent?.children?.length) {
+      formData.value.categoryId = parentId
+    }
+  }
+}
+
+// Watch for sub-category selection, if none selected use parent
+watch(() => formData.value.categoryId, (newVal) => {
+  // categoryId is already set correctly
+}, { immediate: true })
 
 // GraphQL mutation
 const { mutate: createTicket } = useMutation(CREATE_TICKET)
 
 function handleFilesUpdate(files) {
-  
   attachments.value = files
 }
 
 async function handleSubmit() {
   const { valid } = await formRef.value.validate()
   if (!valid) return
+
+  // Ensure we have a category selected
+  const finalCategoryId = formData.value.categoryId || selectedParentCategory.value
+  if (!finalCategoryId) {
+    notificationStore.error('Please select a category')
+    return
+  }
 
   loading.value = true
 
@@ -311,31 +400,26 @@ async function handleSubmit() {
       title: formData.value.title,
       description: formData.value.description,
       priority: formData.value.priority,
-      category: formData.value.category,
+      categoryId: finalCategoryId,
       workstationNumber: formData.value.workstation || null
     }
 
-    
     const result = await createTicket({ createTicketInput: input })
 
     if (result?.data?.createTicket) {
       const ticketId = result.data.createTicket.id
       
-      
-      
       // Upload attachments if any
       if (attachments.value && attachments.value.length > 0) {
-        
         const token = authStore.token
         
         for (const file of attachments.value) {
-          
           const uploadFormData = new FormData()
           uploadFormData.append('file', file)
           uploadFormData.append('ticketId', ticketId)
           
           try {
-            const uploadResponse = await fetch(`'" + getUploadUrl() + "'`, {
+            const uploadResponse = await fetch(getUploadUrl(), {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${token}`
@@ -347,17 +431,12 @@ async function handleSubmit() {
               const errorText = await uploadResponse.text()
               console.error('Upload failed for', file.name, 'Error:', errorText)
               notificationStore.warning(`Failed to upload ${file.name}`)
-            } else {
-              
             }
           } catch (uploadErr) {
             console.error('Failed to upload attachment:', file.name, uploadErr)
             notificationStore.warning(`Failed to upload ${file.name}`)
           }
         }
-        
-      } else {
-        
       }
       
       notificationStore.success('Ticket created successfully!')

@@ -136,10 +136,13 @@ export class AttachmentsService {
 
     // Upload to Slack if it's an image
     if (file.mimetype?.startsWith('image/')) {
+      console.log(`[AttachmentsService] Image upload - ticket ${ticketId}, slackThreadTs: ${ticket?.slackThreadTs || 'NOT SET'}`);
       if (ticket?.slackThreadTs) {
         await this.slackService.uploadAttachmentToSlack(attachment, ticket.slackThreadTs).catch(err => {
           console.error('Failed to upload attachment to Slack:', err);
         });
+      } else {
+        console.log(`[AttachmentsService] Skipping Slack upload - no slackThreadTs for ticket ${ticketId}`);
       }
     }
 

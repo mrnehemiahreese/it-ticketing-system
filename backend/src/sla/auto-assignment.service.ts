@@ -1,4 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, IsNull, In } from "typeorm";
 import { Cron, CronExpression } from "@nestjs/schedule";
@@ -19,14 +20,19 @@ interface AgentWorkload {
 export class AutoAssignmentService {
   private readonly logger = new Logger(AutoAssignmentService.name);
   private lastAssignedIndex = 0; // For round-robin
+  private autoAssignEnabled: boolean;
 
   constructor(
     @InjectRepository(Ticket)
     private ticketRepository: Repository<Ticket>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    private configService: ConfigService,
     private slackService: SlackService,
-  ) {}
+  ) {
+    this.autoAssignEnabled = this.configService.get<string>("AUTO_ASSIGN_ENABLED", "false") === "true";
+    this.logger.log(`Auto-assignment is ${this.autoAssignEnabled ? "ENABLED" : "DISABLED"}`);
+  }
 
   /**
    * Get available agents sorted by workload (least busy first)
@@ -146,10 +152,15 @@ export class AutoAssignmentService {
   }
 
   /**
-   * Process unassigned tickets - runs every 2 minutes
+   * Process unassigned tickets - runs every minute (if enabled)
    */
   @Cron(CronExpression.EVERY_MINUTE)
   async processUnassignedTickets(): Promise<void> {
+    // Skip if auto-assignment is disabled
+    if (!this.autoAssignEnabled) {
+      return;
+    }
+
     this.logger.debug("Checking for unassigned tickets...");
 
     // Find unassigned open tickets

@@ -40,15 +40,15 @@
     <template v-slot:item.createdBy="{ item }">
       <div class="d-flex align-center">
         <v-avatar
-          :color="getAvatarColor(item.createdBy.firstName)"
+          :color="getAvatarColor(item.createdBy?.fullname)"
           size="32"
           class="mr-2"
         >
           <span class="text-caption">
-            {{ getInitials(item.createdBy.firstName, item.createdBy.lastName) }}
+            {{ getInitials(item.createdBy?.fullname) }}
           </span>
         </v-avatar>
-        <span>{{ item.createdBy.firstName }} {{ item.createdBy.lastName }}</span>
+        <span>{{ item.createdBy?.fullname }}</span>
       </div>
     </template>
 
@@ -56,15 +56,15 @@
     <template v-slot:item.assignedTo="{ item }">
       <div v-if="item.assignedTo" class="d-flex align-center">
         <v-avatar
-          :color="getAvatarColor(item.assignedTo.firstName)"
+          :color="getAvatarColor(item.assignedTo?.fullname)"
           size="32"
           class="mr-2"
         >
           <span class="text-caption">
-            {{ getInitials(item.assignedTo.firstName, item.assignedTo.lastName) }}
+            {{ getInitials(item.assignedTo?.fullname) }}
           </span>
         </v-avatar>
-        <span>{{ item.assignedTo.firstName }} {{ item.assignedTo.lastName }}</span>
+        <span>{{ item.assignedTo?.fullname }}</span>
       </div>
       <span v-else class="text-grey">Unassigned</span>
     </template>

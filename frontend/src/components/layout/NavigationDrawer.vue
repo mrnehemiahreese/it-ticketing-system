@@ -81,10 +81,22 @@
           <v-divider class="my-2" />
           <v-list-subheader v-if="!rail">ADMINISTRATION</v-list-subheader>
           <v-list-item
+            :to="{ name: 'Analytics' }"
+            prepend-icon="mdi-chart-line"
+            title="Analytics"
+            value="analytics"
+          />
+          <v-list-item
             :to="{ name: 'UserAdmin' }"
             prepend-icon="mdi-account-cog"
             title="User Management"
             value="user-admin"
+          />
+          <v-list-item
+            :to="{ name: 'CategoryManager' }"
+            prepend-icon="mdi-folder-cog"
+            title="Categories"
+            value="category-manager"
           />
           <!-- View as Customer Toggle (Admin Only) -->
           <v-divider class="my-2" />

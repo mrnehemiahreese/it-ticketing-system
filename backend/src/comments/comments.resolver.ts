@@ -71,7 +71,8 @@ export class CommentsResolver {
   @Subscription(() => Comment, {
     name: 'commentAdded',
     filter: (payload, variables) => {
-      return payload.ticketId === variables.ticketId;
+      const commentTicketId = payload.commentAdded.ticketId || payload.commentAdded.ticket?.id;
+      return commentTicketId === variables.ticketId;
     },
     resolve: (value) => value.commentAdded,
   })

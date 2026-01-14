@@ -56,10 +56,23 @@ const routes = [
     component: () => import('@/views/ProfileView.vue'),
     meta: { requiresAuth: true }
   },
+  // Admin routes
+  {
+    path: '/admin/analytics',
+    name: 'Analytics',
+    component: () => import('@/views/AnalyticsView.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
+  },
   {
     path: '/admin/users',
     name: 'UserAdmin',
     component: () => import('@/views/UserAdminView.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
+  },
+  {
+    path: '/admin/categories',
+    name: 'CategoryManager',
+    component: () => import('@/views/CategoryManagerView.vue'),
     meta: { requiresAuth: true, requiresAdmin: true }
   },
   // Portal routes for customer portal
@@ -77,31 +90,31 @@ const routes = [
       {
         path: 'submit',
         name: 'CustomerSubmitTicket',
-        component: () => import('@/views/CreateTicketView.vue'),  // Reuse existing
+        component: () => import('@/views/CreateTicketView.vue'),
         meta: { requiresAuth: true }
       },
       {
         path: 'tickets',
         name: 'CustomerTickets',
-        component: () => import('@/views/MyTicketsView.vue'),  // Reuse existing
+        component: () => import('@/views/MyTicketsView.vue'),
         meta: { requiresAuth: true }
       },
       {
         path: 'tickets/:id',
         name: 'CustomerTicketDetail',
-        component: () => import('@/views/TicketDetailView.vue'),  // Reuse existing
+        component: () => import('@/views/TicketDetailView.vue'),
         meta: { requiresAuth: true }
       },
       {
         path: 'knowledge-base',
         name: 'CustomerKnowledgeBase',
-        component: () => import('@/views/KnowledgeBaseView.vue'),  // Reuse existing
+        component: () => import('@/views/KnowledgeBaseView.vue'),
         meta: { requiresAuth: true }
       },
       {
         path: 'profile',
         name: 'CustomerProfile',
-        component: () => import('@/views/ProfileView.vue'),  // Reuse existing
+        component: () => import('@/views/ProfileView.vue'),
         meta: { requiresAuth: true }
       }
     ]
@@ -143,10 +156,8 @@ router.beforeEach((to, from, next) => {
 
   // Portal-specific routing logic
   if (to.path.startsWith('/portal')) {
-    // Allow access to portal routes
     next()
   } else if (authStore.isCustomer && !to.path.startsWith('/portal') && to.path !== '/login') {
-    // Redirect customers to portal dashboard if they try to access non-portal routes
     next('/portal/dashboard')
   } else {
     next()

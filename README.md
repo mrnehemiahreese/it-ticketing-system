@@ -1,4 +1,4 @@
-# IT Ticketing System
+# TM Support Portal
 
 A modern, full-featured IT ticketing and support system built with NestJS, GraphQL, Vue 3, and Vuetify 3.
 
@@ -161,7 +161,7 @@ SMTP_PASSWORD=abcd efgh ijkl mnop  # Remove spaces
 ### Incoming Webhooks (Simple)
 1. Go to https://api.slack.com/apps
 2. Create New App → "From scratch"
-3. Name it "IT Ticketing" and select workspace
+3. Name it "TM Support" and select workspace
 4. Click "Incoming Webhooks" → Activate
 5. Add New Webhook to Workspace
 6. Select channel (e.g., #it-support)

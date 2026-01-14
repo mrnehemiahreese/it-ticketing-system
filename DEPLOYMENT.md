@@ -1,4 +1,4 @@
-# IT Ticketing System - Deployment Guide
+# TM Support Portal - Deployment Guide
 
 ## Overview
 
@@ -152,7 +152,7 @@ SMTP_HOST=smtp.your-provider.com
 SMTP_PORT=587
 SMTP_USER=no-reply@your-domain.com
 SMTP_PASSWORD=<SMTP-PASSWORD>
-SMTP_FROM=IT Support <support@your-domain.com>
+SMTP_FROM=TM Support <support@your-domain.com>
 
 # Slack
 SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL

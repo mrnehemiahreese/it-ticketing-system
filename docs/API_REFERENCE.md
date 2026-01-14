@@ -1,4 +1,4 @@
-# IT Ticketing System - GraphQL API Reference
+# TM Support Portal - GraphQL API Reference
 
 ## Base URL
 

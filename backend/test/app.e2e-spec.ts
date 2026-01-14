@@ -3,7 +3,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
 
-describe('IT Ticketing System (e2e)', () => {
+describe('TM Support Portal (e2e)', () => {
   let app: INestApplication;
   let accessToken: string;
   let adminToken: string;

@@ -2,7 +2,7 @@
   "name": "it-ticketing-system-frontend",
   "version": "1.0.0",
   "type": "module",
-  "description": "IT Ticketing System Frontend - Vue 3 + Vuetify 3",
+  "description": "TM Support Portal Frontend - Vue 3 + Vuetify 3",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

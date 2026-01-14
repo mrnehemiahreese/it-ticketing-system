@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a production-ready Vue 3 + Vuetify 3 frontend application for the IT Ticketing System. It features a modern, responsive design with Material Design 3 principles, complete state management, and comprehensive GraphQL integration.
+This is a production-ready Vue 3 + Vuetify 3 frontend application for the TM Support Portal. It features a modern, responsive design with Material Design 3 principles, complete state management, and comprehensive GraphQL integration.
 
 ## Technology Stack
 

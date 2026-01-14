@@ -1,4 +1,4 @@
-# IT Ticketing System - Frontend
+# TM Support Portal - Frontend
 
 Modern, production-ready Vue 3 + Vuetify 3 frontend for the IT ticketing system.
 
@@ -145,7 +145,7 @@ src/
 VITE_API_URL=http://localhost:4000
 VITE_GRAPHQL_ENDPOINT=http://localhost:4000/graphql
 VITE_WS_ENDPOINT=ws://localhost:4000/graphql
-VITE_APP_NAME=IT Ticketing System
+VITE_APP_NAME=TM Support Portal
 VITE_APP_VERSION=1.0.0
 ```
 

@@ -1,7 +1,7 @@
 {
   "name": "ticketing-backend",
   "version": "1.0.0",
-  "description": "IT Ticketing System Backend - NestJS + GraphQL",
+  "description": "TM Support Portal Backend - NestJS + GraphQL",
   "author": "IT Team",
   "private": true,
   "license": "UNLICENSED",
@@ -57,7 +57,9 @@
     "rxjs": "^7.8.1",
     "sanitize-html": "^2.17.0",
     "typeorm": "^0.3.19",
-    "ws": "^8.14.2"
+    "ws": "^8.14.2",
+    "imap-simple": "^5.1.0",
+    "mailparser": "^3.6.5"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.2.1",
@@ -83,7 +85,8 @@
     "ts-loader": "^9.5.1",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "@types/mailparser": "^3.4.0"
   },
   "jest": {
     "moduleFileExtensions": [

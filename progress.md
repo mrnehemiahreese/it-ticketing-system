@@ -1,6 +1,6 @@
-# IT Ticketing System - Progress Tracking
+# TM Support Portal - Progress Tracking
 
-**Project:** IT Ticketing System  
+**Project:** TM Support Portal  
 **Location:** `/home/mrnehemiahreese/it-ticketing-system`  
 **Tracking Started:** January 12, 2026  
 **Overall Status:** In Planning

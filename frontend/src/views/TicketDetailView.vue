@@ -413,7 +413,7 @@ const imageModal = ref({
 })
 
 // Fetch ticket
-const { result, loading, refetch } = useQuery(GET_TICKET, { id: ticketId.value }, { fetchPolicy: "cache-and-network" })
+const { result, loading, refetch } = useQuery(GET_TICKET, () => ({ id: ticketId.value }), { fetchPolicy: "cache-and-network" })
 const ticket = computed(() => result.value?.ticket)
 
 // Subscribe to ticket updates
@@ -439,12 +439,9 @@ const { onResult: onCommentAdded } = useSubscription(
 )
 
 onCommentAdded((data) => {
-  if (data.data?.commentAdded && ticket.value) {
-    // Add new comment to the ticket's comments array
-    const newComment = data.data.commentAdded
-    if (!ticket.value.comments.find(c => c.id === newComment.id)) {
-      ticket.value.comments.push(newComment)
-    }
+  if (data.data?.commentAdded) {
+    // Refetch ticket to get updated comments
+    refetch({ id: ticketId.value })
   }
 })
 
@@ -559,6 +556,7 @@ async function handleSubmitComment(commentData) {
   try {
     await createComment({ createCommentInput: commentData })
     notificationStore.success('Comment added successfully')
+    await refetch({ id: ticketId.value })
     editingComment.value = null
   } catch (err) {
     notificationStore.error(parseGraphQLError(err))

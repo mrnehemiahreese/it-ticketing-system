@@ -1,4 +1,4 @@
-import { ObjectType, Field, ID } from '@nestjs/graphql';
+import { ObjectType, Field, ID } from "@nestjs/graphql";
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -9,24 +9,25 @@ import {
   OneToMany,
   JoinColumn,
   Index,
-  BeforeInsert,
-} from 'typeorm';
-import { TicketStatus } from '../../common/enums/ticket-status.enum';
-import { TicketPriority } from '../../common/enums/ticket-priority.enum';
-import { TicketCategory } from '../../common/enums/ticket-category.enum';
-import { User } from '../../users/entities/user.entity';
-import { Comment } from '../../comments/entities/comment.entity';
-import { Attachment } from '../../attachments/entities/attachment.entity';
+} from "typeorm";
+import { TicketStatus } from "../../common/enums/ticket-status.enum";
+import { TicketPriority } from "../../common/enums/ticket-priority.enum";
+import { TicketCategory as TicketCategoryEnum } from "../../common/enums/ticket-category.enum";
+import { TicketCategory } from "../../categories/entities/ticket-category.entity";
+import { User } from "../../users/entities/user.entity";
+import { Comment } from "../../comments/entities/comment.entity";
+import { Attachment } from "../../attachments/entities/attachment.entity";
 
 @ObjectType()
-@Entity('tickets')
-@Index(['status'])
-@Index(['priority'])
-@Index(['createdById'])
-@Index(['assignedToId'])
+@Entity("tickets")
+@Index(["status"])
+@Index(["priority"])
+@Index(["createdById"])
+@Index(["assignedToId"])
+@Index(["categoryId"])
 export class Ticket {
   @Field(() => ID)
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn("uuid")
   id: string;
 
   @Field()
@@ -38,29 +39,40 @@ export class Ticket {
   title: string;
 
   @Field()
-  @Column('text')
+  @Column("text")
   description: string;
 
   @Field(() => TicketStatus)
   @Column({
-    type: 'varchar',
+    type: "varchar",
     default: TicketStatus.OPEN,
   })
   status: TicketStatus;
 
   @Field(() => TicketPriority)
   @Column({
-    type: 'varchar',
+    type: "varchar",
     default: TicketPriority.MEDIUM,
   })
   priority: TicketPriority;
 
-  @Field(() => TicketCategory)
+  // Legacy category enum field (deprecated, kept for migration)
+  @Field(() => TicketCategoryEnum, { nullable: true, deprecationReason: "Use ticketCategory relation instead" })
   @Column({
-    type: 'varchar',
-    default: TicketCategory.OTHER,
+    type: "varchar",
+    nullable: true,
   })
-  category: TicketCategory;
+  category?: TicketCategoryEnum;
+
+  // New dynamic category reference
+  @Field({ nullable: true })
+  @Column({ nullable: true })
+  categoryId?: string;
+
+  @Field(() => TicketCategory, { nullable: true })
+  @ManyToOne(() => TicketCategory, { eager: true, nullable: true })
+  @JoinColumn({ name: "categoryId" })
+  ticketCategory?: TicketCategory;
 
   @Field({ nullable: true })
   @Column({ nullable: true })
@@ -76,7 +88,7 @@ export class Ticket {
 
   @Field(() => User)
   @ManyToOne(() => User, (user) => user.createdTickets, { eager: true })
-  @JoinColumn({ name: 'createdById' })
+  @JoinColumn({ name: "createdById" })
   createdBy: User;
 
   @Field({ nullable: true })
@@ -85,7 +97,7 @@ export class Ticket {
 
   @Field(() => User, { nullable: true })
   @ManyToOne(() => User, (user) => user.assignedTickets, { eager: true, nullable: true })
-  @JoinColumn({ name: 'assignedToId' })
+  @JoinColumn({ name: "assignedToId" })
   assignedTo?: User;
 
   @Field(() => [Comment], { nullable: true })

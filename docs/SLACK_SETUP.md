@@ -18,7 +18,7 @@ This guide explains how to set up Slack integration for bidirectional ticket syn
 
 1. Go to https://api.slack.com/apps
 2. Click **Create New App** → **From scratch**
-3. Name it (e.g., "IT Ticketing") and select your workspace
+3. Name it (e.g., "TM Support") and select your workspace
 
 ## Step 2: Configure OAuth Scopes
 

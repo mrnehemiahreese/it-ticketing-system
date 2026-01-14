@@ -1,6 +1,6 @@
 # Customer Portal
 
-The IT Ticketing System includes a customer-facing portal with restricted access.
+The TM Support Portal includes a customer-facing portal with restricted access.
 
 ## Features
 

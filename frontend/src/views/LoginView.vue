@@ -8,7 +8,7 @@
               <v-card-text>
                 <div class="text-center mb-6">
                   <v-icon size="64" color="primary">mdi-ticket-confirmation</v-icon>
-                  <h1 class="text-h4 font-weight-bold mt-4">IT Ticketing System</h1>
+                  <h1 class="text-h4 font-weight-bold mt-4">TM Support Portal</h1>
                   <p class="text-subtitle-1 text-grey mt-2">Sign in to continue</p>
                 </div>
 
@@ -71,7 +71,7 @@
             </v-card>
 
             <div class="text-center mt-4 text-caption text-grey">
-              &copy; 2026 IT Ticketing System. All rights reserved.
+              &copy; 2026 TM Support Portal. All rights reserved.
             </div>
           </v-col>
         </v-row>

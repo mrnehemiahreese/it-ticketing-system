@@ -2,7 +2,7 @@ import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.ittickets.app',
-  appName: 'IT Ticketing System',
+  appName: 'TM Support Portal',
   webDir: 'dist',
   server: {
     androidScheme: 'https',

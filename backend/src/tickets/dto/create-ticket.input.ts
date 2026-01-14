@@ -1,7 +1,7 @@
-import { InputType, Field } from '@nestjs/graphql';
-import { IsNotEmpty, IsOptional, IsEnum, IsUUID } from 'class-validator';
-import { TicketPriority } from '../../common/enums/ticket-priority.enum';
-import { TicketCategory } from '../../common/enums/ticket-category.enum';
+import { InputType, Field } from "@nestjs/graphql";
+import { IsNotEmpty, IsOptional, IsEnum, IsUUID } from "class-validator";
+import { TicketPriority } from "../../common/enums/ticket-priority.enum";
+import { TicketCategoryEnum } from "../../common/enums/ticket-category.enum";
 
 @InputType()
 export class CreateTicketInput {
@@ -18,10 +18,17 @@ export class CreateTicketInput {
   @IsEnum(TicketPriority)
   priority?: TicketPriority;
 
-  @Field(() => TicketCategory, { nullable: true })
+  // Legacy category enum (deprecated)
+  @Field(() => TicketCategoryEnum, { nullable: true, deprecationReason: "Use categoryId instead" })
   @IsOptional()
-  @IsEnum(TicketCategory)
-  category?: TicketCategory;
+  @IsEnum(TicketCategoryEnum)
+  category?: TicketCategoryEnum;
+
+  // New dynamic category reference
+  @Field({ nullable: true, description: "ID of the dynamic category" })
+  @IsOptional()
+  @IsUUID()
+  categoryId?: string;
 
   @Field({ nullable: true })
   @IsOptional()

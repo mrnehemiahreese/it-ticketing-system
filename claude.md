@@ -1,6 +1,6 @@
 # CLAUDE.md - Project Conventions & AI Assistant Guidelines
 
-**Project:** IT Ticketing System  
+**Project:** TM Support Portal  
 **Purpose:** Define conventions and context for AI assistants and development team
 
 ---

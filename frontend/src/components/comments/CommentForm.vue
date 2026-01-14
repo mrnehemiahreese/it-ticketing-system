@@ -51,7 +51,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import { VALIDATION_RULES } from '@/utils/constants'
 
 const props = defineProps({
@@ -116,11 +116,13 @@ function handleCancel() {
   resetForm()
 }
 
-function resetForm() {
+async function resetForm() {
   formData.value = {
     content: '',
     isInternal: false
   }
+  // Wait for Vue to process the reactive update before resetting validation
+  await nextTick()
   formRef.value?.resetValidation()
 }
 </script>

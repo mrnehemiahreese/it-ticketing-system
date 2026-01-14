@@ -51,11 +51,22 @@ services:
       REDIS_PORT: 6379
       JWT_SECRET: ${JWT_SECRET:-change-this-secret-key-in-production}
       JWT_EXPIRATION: ${JWT_EXPIRATION:-7d}
+      # SMTP Configuration (outgoing emails)
       SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USER: ${SMTP_USER}
-      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_PASS: ${SMTP_PASS}
       SMTP_FROM: ${SMTP_FROM:-noreply@ticketing.local}
+      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-IT Support}
+      # IMAP Configuration (incoming emails)
+      IMAP_HOST: ${IMAP_HOST}
+      IMAP_PORT: ${IMAP_PORT:-993}
+      IMAP_USER: ${IMAP_USER}
+      IMAP_PASS: ${IMAP_PASS}
+      # Email Dev Mode (optional)
+      EMAIL_DEV_RECIPIENT: ${EMAIL_DEV_RECIPIENT}
+      AUTO_ASSIGN_ENABLED: ${AUTO_ASSIGN_ENABLED:-false}
+      # Slack Configuration
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
       SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN}
       SLACK_ENABLED: ${SLACK_ENABLED}

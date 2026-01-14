@@ -50,17 +50,17 @@
       <div class="d-flex align-center justify-space-between">
         <div class="d-flex align-center">
           <v-avatar
-            :color="getAvatarColor(ticket.createdBy.firstName)"
+            :color="getAvatarColor(ticket.createdBy?.fullname)"
             size="32"
             class="mr-2"
           >
             <span class="text-caption">
-              {{ getInitials(ticket.createdBy.firstName, ticket.createdBy.lastName) }}
+              {{ getInitials(ticket.createdBy?.fullname) }}
             </span>
           </v-avatar>
           <div>
             <div class="text-caption font-weight-medium">
-              {{ ticket.createdBy.firstName }} {{ ticket.createdBy.lastName }}
+              {{ ticket.createdBy?.fullname }}
             </div>
             <div class="text-caption text-grey">
               Created by
@@ -70,17 +70,17 @@
 
         <div v-if="ticket.assignedTo" class="d-flex align-center">
           <v-avatar
-            :color="getAvatarColor(ticket.assignedTo.firstName)"
+            :color="getAvatarColor(ticket.assignedTo?.fullname)"
             size="32"
             class="mr-2"
           >
             <span class="text-caption">
-              {{ getInitials(ticket.assignedTo.firstName, ticket.assignedTo.lastName) }}
+              {{ getInitials(ticket.assignedTo?.fullname) }}
             </span>
           </v-avatar>
           <div>
             <div class="text-caption font-weight-medium">
-              {{ ticket.assignedTo.firstName }} {{ ticket.assignedTo.lastName }}
+              {{ ticket.assignedTo?.fullname }}
             </div>
             <div class="text-caption text-grey">
               Assigned to

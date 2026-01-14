@@ -1,4 +1,4 @@
-# IT Ticketing System - Backend
+# TM Support Portal - Backend
 
 A production-ready NestJS backend with GraphQL API for managing IT support tickets.
 

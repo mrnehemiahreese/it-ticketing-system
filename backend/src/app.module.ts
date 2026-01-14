@@ -20,6 +20,7 @@ import { SurveysModule } from './surveys/surveys.module';
 import { PubSubModule } from './pubsub/pubsub.module';
 import { SlaModule } from './sla/sla.module';
 import { TasksModule } from './tasks/tasks.module';
+import { CategoriesModule } from './categories/categories.module';
 
 // Entity imports
 import { User } from './users/entities/user.entity';
@@ -30,6 +31,7 @@ import { Attachment } from './attachments/entities/attachment.entity';
 import { KnowledgeArticle } from './database/entities/knowledge-article.entity';
 import { SurveyResponse } from './surveys/entities/survey-response.entity';
 import { SlaPolicy } from './sla/entities/sla-policy.entity';
+import { TicketCategory } from './categories/entities/ticket-category.entity';
 
 @Module({
   imports: [
@@ -42,7 +44,7 @@ import { SlaPolicy } from './sla/entities/sla-policy.entity';
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
         url: configService.get<string>('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/ticketing_system'),
-        entities: [User, Ticket, TicketWatcher, Comment, Attachment, KnowledgeArticle, SurveyResponse, SlaPolicy],
+        entities: [User, Ticket, TicketWatcher, Comment, Attachment, KnowledgeArticle, SurveyResponse, SlaPolicy, TicketCategory],
         synchronize: configService.get<string>('NODE_ENV') === 'development',
         logging: configService.get<string>('NODE_ENV') === 'development',
         autoLoadEntities: true,
@@ -89,6 +91,7 @@ import { SlaPolicy } from './sla/entities/sla-policy.entity';
     PubSubModule,
     SlaModule,
     TasksModule,
+    CategoriesModule,
   ],
   controllers: [],
   providers: [],
