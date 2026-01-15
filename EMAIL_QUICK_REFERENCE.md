@@ -2,7 +2,7 @@
 
 ## Email Credentials
 - **Address**: support@tmconsulting.us
-- **Password**: REDACTED
+- **Password**: <YOUR-EMAIL-PASSWORD>
 - **IMAP**: tmconsulting.us:993
 - **SMTP**: tmconsulting.us:465
 
