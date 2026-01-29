@@ -5,7 +5,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '../common/enums/role.enum';
-import { TicketStatistics, TicketPriorityStats, ActivityData, UserStatistics, AgentPerformance, TicketTrend } from './dashboard.types';
+import { TicketStatistics, TicketPriorityStats, ActivityData, UserStatistics, AgentPerformance, TicketTrend, TicketSourceStats } from './dashboard.types';
 
 @Resolver()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -56,5 +56,11 @@ export class DashboardResolver {
   @Roles(Role.ADMIN, Role.AGENT)
   async averageResolutionTime(): Promise<number> {
     return this.dashboardService.getAverageResolutionTime();
+  }
+
+  @Query(() => TicketSourceStats)
+  @Roles(Role.ADMIN, Role.AGENT)
+  async ticketsBySource(): Promise<TicketSourceStats> {
+    return this.dashboardService.getTicketsBySource();
   }
 }

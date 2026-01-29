@@ -161,6 +161,57 @@
             </v-card>
           </v-col>
         </v-row>
+
+        <!-- Source Breakdown -->
+        <v-row class="mt-6">
+          <v-col cols="12" md="4">
+            <v-card elevation="2">
+              <v-card-title>Tickets by Source</v-card-title>
+              <v-divider />
+              <v-card-text style="height: 250px">
+                <Doughnut v-if="sourceChartData" :data="sourceChartData" :options="doughnutOptions" />
+                <div v-else class="d-flex align-center justify-center" style="height: 100%">
+                  <v-progress-circular indeterminate color="primary" />
+                </div>
+              </v-card-text>
+            </v-card>
+          </v-col>
+          <v-col cols="12" md="8">
+            <v-card elevation="2">
+              <v-card-title>Source Breakdown</v-card-title>
+              <v-divider />
+              <v-list>
+                <v-list-item>
+                  <template v-slot:prepend>
+                    <v-avatar color="blue" size="32"><v-icon size="small" color="white">mdi-web</v-icon></v-avatar>
+                  </template>
+                  <v-list-item-title>Portal</v-list-item-title>
+                  <template v-slot:append>
+                    <v-chip size="small" color="blue" variant="flat">{{ sourceStats?.portal || 0 }}</v-chip>
+                  </template>
+                </v-list-item>
+                <v-list-item>
+                  <template v-slot:prepend>
+                    <v-avatar color="orange" size="32"><v-icon size="small" color="white">mdi-email</v-icon></v-avatar>
+                  </template>
+                  <v-list-item-title>Email</v-list-item-title>
+                  <template v-slot:append>
+                    <v-chip size="small" color="orange" variant="flat">{{ sourceStats?.email || 0 }}</v-chip>
+                  </template>
+                </v-list-item>
+                <v-list-item>
+                  <template v-slot:prepend>
+                    <v-avatar color="purple" size="32"><v-icon size="small" color="white">mdi-slack</v-icon></v-avatar>
+                  </template>
+                  <v-list-item-title>Slack</v-list-item-title>
+                  <template v-slot:append>
+                    <v-chip size="small" color="purple" variant="flat">{{ sourceStats?.slack || 0 }}</v-chip>
+                  </template>
+                </v-list-item>
+              </v-list>
+            </v-card>
+          </v-col>
+        </v-row>
       </v-window-item>
 
       <!-- Agents Tab -->
@@ -459,6 +510,21 @@ const priorityStats = computed(() => result.value?.ticketsByPriority)
 const agentPerformance = computed(() => result.value?.agentPerformance)
 const ticketTrends = computed(() => result.value?.ticketTrends || [])
 const avgResolutionTime = computed(() => result.value?.averageResolutionTime || 0)
+
+// Source computed
+const sourceStats = computed(() => result.value?.ticketsBySource)
+
+const sourceChartData = computed(() => {
+  const src = sourceStats.value
+  if (!src) return null
+  return {
+    labels: ['Portal', 'Email', 'Slack'],
+    datasets: [{
+      data: [src.portal, src.email, src.slack],
+      backgroundColor: ['#2196F3', '#FF9800', '#9C27B0']
+    }]
+  }
+})
 
 // Category computed
 const categoryStats = computed(() => categoryResult.value?.categoryStats || [])

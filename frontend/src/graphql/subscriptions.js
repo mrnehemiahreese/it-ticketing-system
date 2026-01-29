@@ -11,6 +11,8 @@ export const TICKET_UPDATED_SUBSCRIPTION = gql`
       priority
       category
       workstationNumber
+      source
+      contactEmail
       createdAt
       updatedAt
       resolvedAt
@@ -89,6 +91,8 @@ export const NEW_TICKET_SUBSCRIPTION = gql`
       priority
       category
       workstationNumber
+      source
+      contactEmail
       createdAt
       updatedAt
       createdBy {

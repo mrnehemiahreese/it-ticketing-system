@@ -125,8 +125,9 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useQuery } from '@vue/apollo-composable'
+import { useQuery, useSubscription } from '@vue/apollo-composable'
 import { useTicketStore } from '@/stores/ticket'
+import { NEW_TICKET_SUBSCRIPTION } from "@/graphql/subscriptions"
 import { GET_TICKETS, GET_TECHNICIANS } from '@/graphql/queries'
 import { debounce } from '@/utils/helpers'
 import TicketTable from '@/components/tickets/TicketTable.vue'
@@ -189,6 +190,14 @@ const filteredTickets = computed(() => {
 })
 
 // Watch for tickets changes and update store
+// Subscribe to new tickets for real-time updates
+const { onResult: onNewTicket } = useSubscription(NEW_TICKET_SUBSCRIPTION)
+onNewTicket((data) => {
+  if (data.data?.newTicket) {
+    refetch()
+  }
+})
+
 watch(tickets, (newTickets) => {
   ticketStore.setTickets(newTickets)
 }, { immediate: true })

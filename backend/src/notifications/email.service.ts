@@ -199,4 +199,56 @@ export class EmailService {
       console.error('Error sending comment notification email:', error);
     }
   }
+
+  async sendTicketAssignedToCustomerNotification(ticket: Ticket, customer: User, assignee: User): Promise<void> {
+    try {
+      const ticketNumberOnly = ticket.ticketNumber.replace('TKT-', '');
+
+      await this.transporter.sendMail({
+        from: this.getFromAddress(),
+        to: this.getRecipientEmail(customer.email),
+        subject: this.formatSubject(ticketNumberOnly, `Your ticket has been assigned`),
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+            <div style="background-color: #1976D2; padding: 20px; text-align: center;">
+              <h1 style="color: #fff; margin: 0; font-size: 22px;">TM Support Portal</h1>
+            </div>
+
+            <div style="padding: 30px 20px;">
+              <p style="font-size: 16px;">Hello ${customer.fullname},</p>
+
+              <p>Thank you for reaching out to us. We wanted to let you know that your support request has been reviewed and assigned to a member of our team.</p>
+
+              <div style="background-color: #f5f5f5; border-left: 4px solid #1976D2; padding: 15px; margin: 20px 0;">
+                <p style="margin: 5px 0;"><strong>Ticket Number:</strong> ${ticket.ticketNumber}</p>
+                <p style="margin: 5px 0;"><strong>Subject:</strong> ${ticket.title}</p>
+                <p style="margin: 5px 0;"><strong>Assigned To:</strong> ${assignee.fullname}</p>
+                <p style="margin: 5px 0;"><strong>Priority:</strong> ${ticket.priority}</p>
+                <p style="margin: 5px 0;"><strong>Status:</strong> In Progress</p>
+              </div>
+
+              <p>${assignee.fullname} is now actively working on your request and will follow up with you as soon as possible. If you have any additional details to share, you can reply directly to this email and your message will be added to the ticket.</p>
+
+              <p>You can also track the status of your ticket anytime by visiting our support portal.</p>
+
+              <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 25px 0;">
+
+              <p style="color: #666; font-size: 13px;">
+                If you have any urgent concerns, please don't hesitate to reach out to our support team.<br>
+                Please keep the <strong>[Ticket #${ticketNumberOnly}]</strong> reference in the subject line when replying.
+              </p>
+
+              <p style="color: #999; font-size: 12px;">
+                &mdash; TM Consulting Support Team
+              </p>
+            </div>
+          </div>
+        `,
+      });
+
+      console.log(`Sent assignment notification to customer ${customer.email} for ticket ${ticket.ticketNumber}`);
+    } catch (error) {
+      console.error('Error sending ticket assigned to customer email:', error);
+    }
+  }
 }

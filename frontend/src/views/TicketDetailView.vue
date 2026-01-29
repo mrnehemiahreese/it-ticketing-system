@@ -20,6 +20,9 @@
           <div class="d-flex ga-2">
             <StatusChip :status="ticket.status" show-icon />
             <PriorityChip :priority="ticket.priority" show-icon />
+            <v-chip v-if="ticket.source" :color="sourceColor" variant="flat" size="small" :prepend-icon="sourceIcon">
+              {{ sourceLabel }}
+            </v-chip>
           </div>
         </div>
       </div>
@@ -199,6 +202,15 @@
                     <div class="font-weight-medium">{{ ticket.createdBy?.fullname }}</div>
                     <div class="text-caption text-grey">{{ ticket.createdBy.email }}</div>
                   </div>
+                </div>
+              </div>
+
+              <!-- Contact Email (for email-created tickets) -->
+              <div v-if="ticket.contactEmail" class="mb-4">
+                <div class="text-caption text-grey mb-2">Contact Email</div>
+                <div class="d-flex align-center">
+                  <v-icon class="mr-2" size="small">mdi-email-outline</v-icon>
+                  <a :href="'mailto:' + ticket.contactEmail" class="text-primary">{{ ticket.contactEmail }}</a>
                 </div>
               </div>
 
@@ -463,6 +475,21 @@ const agents = computed(() => {
 
 const isTicketOwner = computed(() => {
   return ticket.value?.createdBy?.id === authStore.user?.id
+})
+
+const sourceLabel = computed(() => {
+  const labels = { PORTAL: 'Portal', EMAIL: 'Email', SLACK: 'Slack' }
+  return labels[ticket.value?.source] || ticket.value?.source || 'Portal'
+})
+
+const sourceColor = computed(() => {
+  const colors = { PORTAL: 'blue', EMAIL: 'orange', SLACK: 'purple' }
+  return colors[ticket.value?.source] || 'grey'
+})
+
+const sourceIcon = computed(() => {
+  const icons = { PORTAL: 'mdi-web', EMAIL: 'mdi-email', SLACK: 'mdi-slack' }
+  return icons[ticket.value?.source] || 'mdi-web'
 })
 
 // Status options

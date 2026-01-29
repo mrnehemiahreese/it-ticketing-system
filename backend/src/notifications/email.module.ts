@@ -7,12 +7,14 @@ import { Ticket } from "../tickets/entities/ticket.entity";
 import { User } from "../users/entities/user.entity";
 import { Comment } from "../comments/entities/comment.entity";
 import { SlackModule } from "../slack/slack.module";
+import { PubSubModule } from "../pubsub/pubsub.module";
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Ticket, User, Comment]),
     ScheduleModule.forRoot(),
     forwardRef(() => SlackModule),
+    PubSubModule,
   ],
   providers: [EmailService, EmailInboundService],
   exports: [EmailService, EmailInboundService],

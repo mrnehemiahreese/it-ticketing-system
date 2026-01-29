@@ -1,18 +1,22 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, Inject } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import * as imaps from "imap-simple";
 import { simpleParser } from "mailparser";
+import { PubSub } from "graphql-subscriptions";
 import { Ticket } from "../tickets/entities/ticket.entity";
 import { User } from "../users/entities/user.entity";
 import { TicketStatus } from "../common/enums/ticket-status.enum";
 import { TicketPriority } from "../common/enums/ticket-priority.enum";
 import { TicketCategory } from "../common/enums/ticket-category.enum";
+import { TicketSource } from "../common/enums/ticket-source.enum";
 import { Role } from "../common/enums/role.enum";
 import { Comment } from "../comments/entities/comment.entity";
 import { SlackService } from "../slack/slack.service";
+import { EmailService } from "./email.service";
+import { PUB_SUB } from "../pubsub/pubsub.module";
 
 @Injectable()
 export class EmailInboundService {
@@ -28,6 +32,8 @@ export class EmailInboundService {
     @InjectRepository(Comment)
     private commentsRepository: Repository<Comment>,
     private slackService: SlackService,
+    @Inject(PUB_SUB) private pubSub: PubSub,
+    private emailService: EmailService,
   ) {}
 
   async onModuleInit() {
@@ -167,6 +173,8 @@ export class EmailInboundService {
         priority: TicketPriority.MEDIUM,
         category: TicketCategory.OTHER,
         createdById: user.id,
+        source: TicketSource.EMAIL,
+        contactEmail: fromEmail,
       });
 
       const savedTicket = await this.ticketsRepository.save(ticket);
@@ -188,6 +196,15 @@ export class EmailInboundService {
           await this.ticketsRepository.save(fullTicket);
           this.logger.log(`Stored Slack thread ${threadTs} for ticket ${ticketNumber}`);
         }
+
+        // Publish real-time event so dashboards update without refresh
+        await this.pubSub.publish('newTicket', { newTicket: fullTicket });
+        this.logger.log(`Published newTicket event for ${ticketNumber}`);
+
+        // Send confirmation email to the customer
+        await this.emailService.sendTicketCreatedNotification(fullTicket, user).catch(err => {
+          this.logger.error("Failed to send ticket created email:", err.message);
+        });
       }
 
       return savedTicket;

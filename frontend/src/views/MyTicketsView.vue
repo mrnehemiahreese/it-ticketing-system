@@ -75,7 +75,8 @@
 
 <script setup>
 import { computed } from 'vue'
-import { useQuery } from '@vue/apollo-composable'
+import { useQuery, useSubscription } from '@vue/apollo-composable'
+import { NEW_TICKET_SUBSCRIPTION } from "@/graphql/subscriptions"
 import { GET_MY_TICKETS } from '@/graphql/queries'
 import StatsCard from '@/components/common/StatsCard.vue'
 import TicketCard from '@/components/tickets/TicketCard.vue'

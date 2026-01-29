@@ -29,6 +29,8 @@ export const GET_TICKETS = gql`
       priority
       category
       workstationNumber
+      source
+      contactEmail
       createdAt
       updatedAt
       resolvedAt
@@ -66,6 +68,8 @@ export const GET_TICKET = gql`
       priority
       category
       workstationNumber
+      source
+      contactEmail
       createdAt
       updatedAt
       resolvedAt
@@ -126,6 +130,8 @@ export const GET_MY_TICKETS = gql`
       priority
       category
       workstationNumber
+      source
+      contactEmail
       createdAt
       updatedAt
       assignedTo {
@@ -281,6 +287,11 @@ export const GET_TICKET_TRENDS = gql`
 export const GET_AVERAGE_RESOLUTION_TIME = gql`
   query GetAverageResolutionTime {
     averageResolutionTime
+    ticketsBySource {
+      portal
+      email
+      slack
+    }
   }
 `
 
@@ -319,5 +330,20 @@ export const GET_ANALYTICS_OVERVIEW = gql`
       count
     }
     averageResolutionTime
+    ticketsBySource {
+      portal
+      email
+      slack
+    }
+  }
+`
+
+export const GET_TICKETS_BY_SOURCE = gql`
+  query GetTicketsBySource {
+    ticketsBySource {
+      portal
+      email
+      slack
+    }
   }
 `

@@ -12,6 +12,7 @@ import {
 } from "typeorm";
 import { TicketStatus } from "../../common/enums/ticket-status.enum";
 import { TicketPriority } from "../../common/enums/ticket-priority.enum";
+import { TicketSource } from "../../common/enums/ticket-source.enum";
 import { TicketCategory as TicketCategoryEnum } from "../../common/enums/ticket-category.enum";
 import { TicketCategory } from "../../categories/entities/ticket-category.entity";
 import { User } from "../../users/entities/user.entity";
@@ -81,6 +82,17 @@ export class Ticket {
   @Field({ nullable: true })
   @Column({ nullable: true })
   slackThreadTs?: string;
+
+  @Field(() => TicketSource)
+  @Column({
+    type: "varchar",
+    default: TicketSource.PORTAL,
+  })
+  source: TicketSource;
+
+  @Field({ nullable: true })
+  @Column({ nullable: true })
+  contactEmail?: string;
 
   @Field()
   @Column()

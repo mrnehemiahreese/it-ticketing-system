@@ -6,6 +6,7 @@ import { User } from '../users/entities/user.entity';
 import { Comment } from '../comments/entities/comment.entity';
 import { TicketStatus } from '../common/enums/ticket-status.enum';
 import { TicketPriority } from '../common/enums/ticket-priority.enum';
+import { TicketSource } from '../common/enums/ticket-source.enum';
 
 @Injectable()
 export class DashboardService {
@@ -187,5 +188,15 @@ export class DashboardService {
 
     // Return average in hours
     return totalTime / resolvedTickets.length / (1000 * 60 * 60);
+  }
+
+  async getTicketsBySource() {
+    const [portal, email, slack] = await Promise.all([
+      this.ticketsRepository.count({ where: { source: TicketSource.PORTAL } }),
+      this.ticketsRepository.count({ where: { source: TicketSource.EMAIL } }),
+      this.ticketsRepository.count({ where: { source: TicketSource.SLACK } }),
+    ]);
+
+    return { portal, email, slack };
   }
 }

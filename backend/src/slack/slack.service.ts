@@ -11,6 +11,7 @@ import { User } from '../users/entities/user.entity';
 import { Attachment } from '../attachments/entities/attachment.entity';
 import { Role } from '../common/enums/role.enum';
 import { TicketStatus } from '../common/enums/ticket-status.enum';
+import { TicketSource } from '../common/enums/ticket-source.enum';
 import { PubSub } from 'graphql-subscriptions';
 import { PUB_SUB } from '../pubsub/pubsub.module';
 

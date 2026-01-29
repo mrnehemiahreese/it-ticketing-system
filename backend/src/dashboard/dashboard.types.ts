@@ -106,3 +106,15 @@ export class TicketTrend {
   @Field(() => Int)
   count: number;
 }
+
+@ObjectType()
+export class TicketSourceStats {
+  @Field(() => Int)
+  portal: number;
+
+  @Field(() => Int)
+  email: number;
+
+  @Field(() => Int)
+  slack: number;
+}

@@ -10,6 +10,7 @@ import { User } from '../users/entities/user.entity';
 import { TicketStatus } from '../common/enums/ticket-status.enum';
 import { Role } from '../common/enums/role.enum';
 import { SlackService } from '../slack/slack.service';
+import { EmailService } from '../notifications/email.service';
 
 @Injectable()
 export class TicketsService {
@@ -21,6 +22,7 @@ export class TicketsService {
     @InjectRepository(User)
     private usersRepository: Repository<User>,
     private slackService: SlackService,
+    private emailService: EmailService,
   ) {}
 
   async create(createTicketInput: CreateTicketInput, userId: string): Promise<Ticket> {
@@ -48,6 +50,14 @@ export class TicketsService {
     if (threadTs) {
       fullTicket.slackThreadTs = threadTs;
       await this.ticketsRepository.save(fullTicket);
+    }
+
+    // Send email notification to the ticket creator
+    const creator = fullTicket.createdBy || await this.usersRepository.findOne({ where: { id: userId } });
+    if (creator) {
+      await this.emailService.sendTicketCreatedNotification(fullTicket, creator).catch(err => {
+        console.error("Failed to send ticket created email:", err);
+      });
     }
 
     return fullTicket;
@@ -119,6 +129,11 @@ export class TicketsService {
 
       if (!isAdminOrAgent && !isOwnerOrAssigned) {
         throw new ForbiddenException('You do not have access to this ticket');
+      }
+
+      // Filter out internal comments for customers
+      if (!isAdminOrAgent && ticket.comments) {
+        ticket.comments = ticket.comments.filter(c => !c.isInternal);
       }
     }
 
@@ -260,6 +275,13 @@ export class TicketsService {
       await this.slackService.notifyAssignment(fullTicket).catch(err => {
         console.error('Failed to notify Slack of assignment:', err);
       });
+
+      // Notify the customer who created the ticket that it has been assigned
+      if (fullTicket.createdBy) {
+        await this.emailService.sendTicketAssignedToCustomerNotification(fullTicket, fullTicket.createdBy, assignUser).catch(err => {
+          console.error('Failed to send assignment email to customer:', err);
+        });
+      }
     }
 
     return fullTicket;
