@@ -56,7 +56,28 @@ import { TicketCategory } from './categories/entities/ticket-category.entity';
       autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
       sortSchema: true,
       playground: true,
-      context: ({ req, res }) => ({ req, res }),
+      context: ({ req, res, extra, connectionParams }: any) => {
+        // For HTTP requests
+        if (req) {
+          return { req, res };
+        }
+        // For WebSocket subscriptions via graphql-ws
+        // Prioritize connectionParams (contains auth token from client)
+        if (connectionParams?.authToken) {
+          return {
+            req: {
+              headers: {
+                authorization: connectionParams.authToken,
+              },
+            },
+          };
+        }
+        // Fallback: use the raw upgrade request from extra
+        if (extra?.request) {
+          return { req: extra.request, res: undefined };
+        }
+        return { req: { headers: {} } };
+      },
       formatError: (error) => {
         return {
           message: error.message,
@@ -68,7 +89,8 @@ import { TicketCategory } from './categories/entities/ticket-category.entity';
       subscriptions: {
         'graphql-ws': {
           onConnect: (context: any) => {
-            const { connectionParams } = context;
+            const { connectionParams, extra } = context;
+            // Store connectionParams so they are available in the context function
             if (connectionParams?.authToken) {
               context.authToken = connectionParams.authToken;
             }

@@ -6,19 +6,34 @@ import { setContext } from '@apollo/client/link/context'
 import { onError } from '@apollo/client/link/error'
 import { DefaultApolloClient } from '@vue/apollo-composable'
 
+// Build the GraphQL HTTP URL
+const graphqlEndpoint = import.meta.env.VITE_GRAPHQL_ENDPOINT || '/graphql'
+
 // HTTP connection to the API
 const httpLink = createHttpLink({
-  uri: import.meta.env.VITE_GRAPHQL_ENDPOINT || 'http://localhost:4000/graphql',
+  uri: graphqlEndpoint,
 })
+
+// Build WebSocket URL - handle both absolute and relative URLs
+function getWsUrl() {
+  const endpoint = graphqlEndpoint
+  if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+    return endpoint.replace(/^http/, 'ws')
+  }
+  // Relative URL - build absolute ws:// URL from current location
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  const host = window.location.host
+  return protocol + '//' + host + endpoint
+}
 
 // WebSocket connection for subscriptions
 const wsLink = new GraphQLWsLink(
   createClient({
-    url: (import.meta.env.VITE_GRAPHQL_ENDPOINT || 'http://localhost:4000/graphql').replace('http', 'ws'),
+    url: getWsUrl,
     connectionParams: () => {
       const token = localStorage.getItem('auth_token')
       return {
-        authToken: token ? `Bearer ${token}` : '',
+        authToken: token ? 'Bearer ' + token : '',
       }
     },
     retryAttempts: 5,
@@ -45,7 +60,7 @@ const authLink = setContext((_, { headers }) => {
   return {
     headers: {
       ...headers,
-      authorization: token ? `Bearer ${token}` : '',
+      authorization: token ? 'Bearer ' + token : '',
     },
   }
 })
@@ -55,10 +70,9 @@ const errorLink = onError(({ graphQLErrors, networkError }) => {
   if (graphQLErrors) {
     graphQLErrors.forEach(({ message, locations, path, extensions }) => {
       console.error(
-        `[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`
+        '[GraphQL error]: Message: ' + message + ', Location: ' + locations + ', Path: ' + path
       )
 
-      // Handle authentication errors
       if (extensions?.code === 'UNAUTHENTICATED') {
         localStorage.removeItem('auth_token')
         localStorage.removeItem('user')
@@ -68,7 +82,7 @@ const errorLink = onError(({ graphQLErrors, networkError }) => {
   }
 
   if (networkError) {
-    console.error(`[Network error]: ${networkError}`)
+    console.error('[Network error]: ' + networkError)
   }
 })
 

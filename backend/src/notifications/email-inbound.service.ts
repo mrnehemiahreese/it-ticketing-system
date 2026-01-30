@@ -201,10 +201,17 @@ export class EmailInboundService {
         await this.pubSub.publish('newTicket', { newTicket: fullTicket });
         this.logger.log(`Published newTicket event for ${ticketNumber}`);
 
-        // Send confirmation email to the customer
-        await this.emailService.sendTicketCreatedNotification(fullTicket, user).catch(err => {
-          this.logger.error("Failed to send ticket created email:", err.message);
-        });
+        // Send confirmation email to the customer (delayed to avoid IMAP/SMTP contention)
+        const emailService = this.emailService;
+        const logger = this.logger;
+        setTimeout(async () => {
+          try {
+            await emailService.sendTicketCreatedNotification(fullTicket, user);
+            logger.log(`Sent ticket created confirmation email for ${ticketNumber}`);
+          } catch (err) {
+            logger.error(`Failed to send ticket created email for ${ticketNumber}: ${err.message}`);
+          }
+        }, 5000);
       }
 
       return savedTicket;

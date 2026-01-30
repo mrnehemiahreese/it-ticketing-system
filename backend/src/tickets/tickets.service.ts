@@ -204,6 +204,20 @@ export class TicketsService {
       await this.slackService.notifyAssignment(fullTicket).catch(err => {
         console.error('Failed to notify Slack of assignment:', err);
       });
+
+      // Email the assignee
+      if (fullTicket.assignedTo) {
+        this.emailService.sendTicketAssignedNotification(fullTicket, fullTicket.assignedTo).catch(err => {
+          console.error('Failed to send assignment email to agent:', err);
+        });
+      }
+
+      // Email the customer (ticket creator)
+      if (fullTicket.createdBy && fullTicket.assignedTo) {
+        this.emailService.sendTicketAssignedToCustomerNotification(fullTicket, fullTicket.createdBy, fullTicket.assignedTo).catch(err => {
+          console.error('Failed to send assignment email to customer:', err);
+        });
+      }
     }
 
     return fullTicket;

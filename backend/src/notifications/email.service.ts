@@ -1,25 +1,29 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
+import * as SMTPTransport from 'nodemailer/lib/smtp-transport';
 import { Ticket } from '../tickets/entities/ticket.entity';
 import { User } from '../users/entities/user.entity';
 
 @Injectable()
 export class EmailService {
-  private transporter: nodemailer.Transporter;
+  constructor(private configService: ConfigService) {}
 
-  constructor(private configService: ConfigService) {
+  private createTransporter(): nodemailer.Transporter {
     const smtpPort = this.configService.get<number>('SMTP_PORT', 587);
-    
-    this.transporter = nodemailer.createTransport({
+    const opts: SMTPTransport.Options = {
       host: this.configService.get<string>('SMTP_HOST', 'smtp.gmail.com'),
       port: smtpPort,
-      secure: smtpPort === 465, // true for 465, false for other ports
+      secure: smtpPort === 465,
       auth: {
         user: this.configService.get<string>('SMTP_USER'),
         pass: this.configService.get<string>('SMTP_PASS'),
       },
-    });
+      connectionTimeout: 30000,
+      greetingTimeout: 30000,
+      socketTimeout: 30000,
+    };
+    return nodemailer.createTransport(opts);
   }
 
   /**
@@ -53,7 +57,7 @@ export class EmailService {
     try {
       const ticketNumberOnly = ticket.ticketNumber.replace('TKT-', '');
       
-      await this.transporter.sendMail({
+      await this.createTransporter().sendMail({
         from: this.getFromAddress(),
         to: this.getRecipientEmail(recipient.email),
         subject: this.formatSubject(ticketNumberOnly, `Your ticket has been received`),
@@ -91,7 +95,7 @@ export class EmailService {
     try {
       const ticketNumberOnly = ticket.ticketNumber.replace('TKT-', '');
       
-      await this.transporter.sendMail({
+      await this.createTransporter().sendMail({
         from: this.getFromAddress(),
         to: this.getRecipientEmail(assignee.email),
         subject: this.formatSubject(ticketNumberOnly, `Ticket assigned to you`),
@@ -130,7 +134,7 @@ export class EmailService {
     try {
       const ticketNumberOnly = ticket.ticketNumber.replace('TKT-', '');
       
-      await this.transporter.sendMail({
+      await this.createTransporter().sendMail({
         from: this.getFromAddress(),
         to: this.getRecipientEmail(recipient.email),
         subject: this.formatSubject(ticketNumberOnly, `Status updated`),
@@ -166,7 +170,7 @@ export class EmailService {
       const ticketNumberOnly = ticket.ticketNumber.replace('TKT-', '');
       const commentBy = commenterName || 'A team member';
       
-      await this.transporter.sendMail({
+      await this.createTransporter().sendMail({
         from: this.getFromAddress(),
         to: this.getRecipientEmail(recipient.email),
         subject: this.formatSubject(ticketNumberOnly, `New comment added`),
@@ -204,7 +208,7 @@ export class EmailService {
     try {
       const ticketNumberOnly = ticket.ticketNumber.replace('TKT-', '');
 
-      await this.transporter.sendMail({
+      await this.createTransporter().sendMail({
         from: this.getFromAddress(),
         to: this.getRecipientEmail(customer.email),
         subject: this.formatSubject(ticketNumberOnly, `Your ticket has been assigned`),

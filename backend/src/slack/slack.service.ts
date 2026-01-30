@@ -14,6 +14,7 @@ import { TicketStatus } from '../common/enums/ticket-status.enum';
 import { TicketSource } from '../common/enums/ticket-source.enum';
 import { PubSub } from 'graphql-subscriptions';
 import { PUB_SUB } from '../pubsub/pubsub.module';
+import { EmailService } from '../notifications/email.service';
 
 @Injectable()
 export class SlackService implements OnModuleInit {
@@ -34,6 +35,7 @@ export class SlackService implements OnModuleInit {
     @InjectRepository(Attachment)
     private attachmentsRepository: Repository<Attachment>,
     @Inject(PUB_SUB) private pubSub: PubSub,
+    private emailService: EmailService,
   ) {
     const botToken = this.configService.get<string>('SLACK_BOT_TOKEN');
     const appToken = this.configService.get<string>('SLACK_APP_TOKEN');
@@ -93,7 +95,7 @@ export class SlackService implements OnModuleInit {
           }
 
           // Check for close command (only "close ticket" as standalone to prevent accidents)
-          if (text.match(/^\s*close\s+ticket\s*$/i)) {
+          if (text.match(/^\s*close\s*(this\s+)?ticket\s*$/i)) {
             this.logger.log(`Close command detected: ${text}`);
             const result = await this.handleStatusCommand(
               message.thread_ts,
@@ -698,11 +700,31 @@ export class SlackService implements OnModuleInit {
 
       // Create comment in the ticketing system (only if there's text)
       if (text.trim()) {
+        // Resolve Slack user mentions (<@U12345>) to display names
+        let resolvedText = text;
+        const mentionPattern = /<@([A-Z0-9]+)>/g;
+        const mentions = [...text.matchAll(mentionPattern)];
+        for (const match of mentions) {
+          try {
+            const userInfo = await this.app.client.users.info({ user: match[1] });
+            const displayName = userInfo.user?.profile?.display_name || userInfo.user?.real_name || match[1];
+            resolvedText = resolvedText.replace(match[0], `@${displayName}`);
+          } catch (e) {
+            this.logger.warn(`Could not resolve Slack user ${match[1]}: ${e.message}`);
+          }
+        }
+
+        // Check for internal comment markers: #internal or #note anywhere in the message
+        const internalPattern = /(?:^|\s)#internal(?:\s|$)|(?:^|\s)#note(?:\s|$)/i;
+        const isInternal = internalPattern.test(resolvedText);
+        // Strip the marker from the comment content
+        const cleanedText = resolvedText.replace(internalPattern, '').trim();
+
         const comment = this.commentsRepository.create({
-          content: text,
+          content: cleanedText || text.trim(),
           ticketId: ticket.id,
           userId: commentUser.id,
-          isInternal: false,
+          isInternal,
         });
 
         const savedComment = await this.commentsRepository.save(comment);
@@ -719,7 +741,27 @@ export class SlackService implements OnModuleInit {
         if (fullComment) {
           this.pubSub.publish("commentAdded", { commentAdded: fullComment });
         }
-        this.logger.log(`Created comment from Slack thread for ticket ${ticket.ticketNumber} (user: ${commentUser.fullname})`);
+        if (isInternal) {
+          this.logger.log(`Created INTERNAL comment from Slack thread for ticket ${ticket.ticketNumber} (user: ${commentUser.fullname})`);
+          // Post confirmation in thread so the agent knows it was marked internal
+          try {
+            await this.app.client.chat.postMessage({
+              channel: this.defaultChannelId || this.defaultChannel,
+              thread_ts: threadTs,
+              text: `\ud83d\udd12 _Comment marked as internal note (not visible to customer)_`,
+            });
+          } catch (e) {
+            this.logger.warn(`Failed to post internal confirmation: ${e.message}`);
+          }
+        } else {
+          this.logger.log(`Created comment from Slack thread for ticket ${ticket.ticketNumber} (user: ${commentUser.fullname})`);
+          // Email the ticket creator about the new comment (if they're not the commenter)
+          if (ticket.createdBy && ticket.createdBy.id !== commentUser.id) {
+            this.emailService.sendCommentNotification(ticket, ticket.createdBy, cleanedText || text.trim(), commentUser.fullname).catch(err => {
+              this.logger.error(`Failed to send comment email for ${ticket.ticketNumber}: ${err.message}`);
+            });
+          }
+        }
       }
 
       // Process any attached image files
