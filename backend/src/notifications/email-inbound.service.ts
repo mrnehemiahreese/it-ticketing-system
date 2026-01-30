@@ -17,6 +17,7 @@ import { Comment } from "../comments/entities/comment.entity";
 import { SlackService } from "../slack/slack.service";
 import { EmailService } from "./email.service";
 import { PUB_SUB } from "../pubsub/pubsub.module";
+import { AttachmentsService } from "../attachments/attachments.service";
 
 @Injectable()
 export class EmailInboundService {
@@ -34,6 +35,7 @@ export class EmailInboundService {
     private slackService: SlackService,
     @Inject(PUB_SUB) private pubSub: PubSub,
     private emailService: EmailService,
+    private attachmentsService: AttachmentsService,
   ) {}
 
   async onModuleInit() {
@@ -131,15 +133,16 @@ export class EmailInboundService {
     const from = mail.from?.value?.[0]?.address || "";
     const textContent = mail.text || "";
     const htmlContent = mail.html || "";
+    const attachments = mail.attachments || [];
 
-    this.logger.log(`Processing email from ${from}: ${subject}`);
+    this.logger.log(`Processing email from ${from}: ${subject} (${attachments.length} attachment(s))`);
 
     const ticketMatch = subject.match(/\[Ticket #(\d+)\]/i);
 
     if (ticketMatch) {
-      await this.handleTicketReply(ticketMatch[1], from, textContent, htmlContent);
+      await this.handleTicketReply(ticketMatch[1], from, textContent, htmlContent, attachments);
     } else {
-      await this.handleNewTicket(from, subject, textContent, htmlContent);
+      await this.handleNewTicket(from, subject, textContent, htmlContent, attachments);
     }
 
     await connection.addFlags(id, ["\\Seen"]);
@@ -150,6 +153,7 @@ export class EmailInboundService {
     subject: string,
     textContent: string,
     htmlContent: string,
+    attachments: any[] = [],
   ) {
     try {
       let user = await this.usersRepository.findOne({
@@ -180,9 +184,31 @@ export class EmailInboundService {
       const savedTicket = await this.ticketsRepository.save(ticket);
       this.logger.log(`Created ticket ${ticketNumber} from email by ${fromEmail}`);
 
+      // Save email attachments
+      if (attachments.length > 0) {
+        this.logger.log(`Saving ${attachments.length} attachment(s) for ticket ${ticketNumber}`);
+        for (const att of attachments) {
+          try {
+            await this.attachmentsService.handleFileUpload(
+              {
+                originalname: att.filename || 'attachment',
+                mimetype: att.contentType || 'application/octet-stream',
+                size: att.size || att.content.length,
+                buffer: att.content,
+              },
+              savedTicket.id,
+              user.id,
+            );
+            this.logger.log(`Saved attachment: ${att.filename}`);
+          } catch (err) {
+            this.logger.error(`Failed to save attachment ${att.filename}: ${err.message}`);
+          }
+        }
+      }
+
       const fullTicket = await this.ticketsRepository.findOne({
         where: { id: savedTicket.id },
-        relations: ["createdBy", "assignedTo"],
+        relations: ["createdBy", "assignedTo", "attachments"],
       });
 
       if (fullTicket) {
@@ -226,6 +252,7 @@ export class EmailInboundService {
     fromEmail: string,
     textContent: string,
     htmlContent: string,
+    attachments: any[] = [],
   ) {
     try {
       const ticket = await this.ticketsRepository.findOne({
@@ -258,6 +285,28 @@ export class EmailInboundService {
 
       const savedComment = await this.commentsRepository.save(comment);
       this.logger.log(`Added comment to ticket ${ticket.ticketNumber} from ${fromEmail}`);
+
+      // Save email attachments for reply
+      if (attachments.length > 0) {
+        this.logger.log(`Saving ${attachments.length} attachment(s) for ticket reply ${ticket.ticketNumber}`);
+        for (const att of attachments) {
+          try {
+            await this.attachmentsService.handleFileUpload(
+              {
+                originalname: att.filename || 'attachment',
+                mimetype: att.contentType || 'application/octet-stream',
+                size: att.size || att.content.length,
+                buffer: att.content,
+              },
+              ticket.id,
+              user.id,
+            );
+            this.logger.log(`Saved attachment: ${att.filename}`);
+          } catch (err) {
+            this.logger.error(`Failed to save attachment ${att.filename}: ${err.message}`);
+          }
+        }
+      }
 
       if (ticket.slackThreadTs) {
         const fullComment = await this.commentsRepository.findOne({

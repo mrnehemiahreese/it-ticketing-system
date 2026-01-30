@@ -8,6 +8,7 @@ import { User } from "../users/entities/user.entity";
 import { Comment } from "../comments/entities/comment.entity";
 import { SlackModule } from "../slack/slack.module";
 import { PubSubModule } from "../pubsub/pubsub.module";
+import { AttachmentsModule } from "../attachments/attachments.module";
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { PubSubModule } from "../pubsub/pubsub.module";
     ScheduleModule.forRoot(),
     forwardRef(() => SlackModule),
     PubSubModule,
+    AttachmentsModule,
   ],
   providers: [EmailService, EmailInboundService],
   exports: [EmailService, EmailInboundService],
