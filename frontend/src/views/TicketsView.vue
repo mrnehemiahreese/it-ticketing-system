@@ -194,6 +194,7 @@ const filteredTickets = computed(() => {
 const { onResult: onNewTicket } = useSubscription(NEW_TICKET_SUBSCRIPTION)
 onNewTicket((data) => {
   if (data.data?.newTicket) {
+    ticketStore.addTicket(data.data.newTicket)
     refetch()
   }
 })

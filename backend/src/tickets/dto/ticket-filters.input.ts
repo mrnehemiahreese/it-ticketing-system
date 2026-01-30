@@ -6,20 +6,17 @@ import { TicketCategory } from '../../common/enums/ticket-category.enum';
 
 @InputType()
 export class TicketFiltersInput {
-  @Field(() => TicketStatus, { nullable: true })
+  @Field(() => [TicketStatus], { nullable: true })
   @IsOptional()
-  @IsEnum(TicketStatus)
-  status?: TicketStatus;
+  status?: TicketStatus[];
 
-  @Field(() => TicketPriority, { nullable: true })
+  @Field(() => [TicketPriority], { nullable: true })
   @IsOptional()
-  @IsEnum(TicketPriority)
-  priority?: TicketPriority;
+  priority?: TicketPriority[];
 
-  @Field(() => TicketCategory, { nullable: true })
+  @Field(() => [TicketCategory], { nullable: true })
   @IsOptional()
-  @IsEnum(TicketCategory)
-  category?: TicketCategory;
+  category?: TicketCategory[];
 
   @Field({ nullable: true })
   @IsOptional()

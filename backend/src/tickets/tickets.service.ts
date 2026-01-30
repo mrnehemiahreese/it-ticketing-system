@@ -84,14 +84,14 @@ export class TicketsService {
     }
 
     if (filters) {
-      if (filters.status) {
-        query.andWhere('ticket.status = :status', { status: filters.status });
+      if (filters.status?.length) {
+        query.andWhere('ticket.status IN (:...statuses)', { statuses: filters.status });
       }
-      if (filters.priority) {
-        query.andWhere('ticket.priority = :priority', { priority: filters.priority });
+      if (filters.priority?.length) {
+        query.andWhere('ticket.priority IN (:...priorities)', { priorities: filters.priority });
       }
-      if (filters.category) {
-        query.andWhere('ticket.category = :category', { category: filters.category });
+      if (filters.category?.length) {
+        query.andWhere('ticket.category IN (:...categories)', { categories: filters.category });
       }
       if (filters.assignedToId) {
         query.andWhere('ticket.assignedToId = :assignedToId', { assignedToId: filters.assignedToId });
@@ -199,6 +199,13 @@ export class TicketsService {
       });
     }
 
+    // Send email notification on status change
+    if (previousStatus !== updateTicketInput.status && updateTicketInput.status && fullTicket.createdBy) {
+      await this.emailService.sendTicketStatusUpdateNotification(fullTicket, fullTicket.createdBy).catch(err => {
+        console.error('Failed to send status update email:', err);
+      });
+    }
+
     // Notify if assigned
     if (previousAssignedTo !== updateTicketInput.assignedToId && updateTicketInput.assignedToId) {
       await this.slackService.notifyAssignment(fullTicket).catch(err => {
@@ -279,7 +286,7 @@ export class TicketsService {
     }
 
     const previousAssignedTo = ticket.assignedToId;
-    ticket.assignedToId = userId;
+    ticket.assignedTo = assignUser;
 
     const savedTicket = await this.ticketsRepository.save(ticket);
     const fullTicket = await this.findOne(savedTicket.id, null);
@@ -288,6 +295,11 @@ export class TicketsService {
     if (previousAssignedTo !== userId) {
       await this.slackService.notifyAssignment(fullTicket).catch(err => {
         console.error('Failed to notify Slack of assignment:', err);
+      });
+
+      // Email the assignee (agent)
+      await this.emailService.sendTicketAssignedNotification(fullTicket, assignUser).catch(err => {
+        console.error('Failed to send assignment email to agent:', err);
       });
 
       // Notify the customer who created the ticket that it has been assigned
@@ -351,14 +363,14 @@ export class TicketsService {
     }
 
     if (filters) {
-      if (filters.status) {
-        query.andWhere("ticket.status = :status", { status: filters.status });
+      if (filters.status?.length) {
+        query.andWhere("ticket.status IN (:...statuses)", { statuses: filters.status });
       }
-      if (filters.priority) {
-        query.andWhere("ticket.priority = :priority", { priority: filters.priority });
+      if (filters.priority?.length) {
+        query.andWhere("ticket.priority IN (:...priorities)", { priorities: filters.priority });
       }
-      if (filters.category) {
-        query.andWhere("ticket.category = :category", { category: filters.category });
+      if (filters.category?.length) {
+        query.andWhere("ticket.category IN (:...categories)", { categories: filters.category });
       }
       if (filters.assignedToId) {
         query.andWhere("ticket.assignedToId = :assignedToId", { assignedToId: filters.assignedToId });

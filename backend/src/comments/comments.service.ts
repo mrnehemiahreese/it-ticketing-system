@@ -8,13 +8,18 @@ import { User } from '../users/entities/user.entity';
 import { Role } from '../common/enums/role.enum';
 import { SlackService } from '../slack/slack.service';
 import { sanitizeContent } from '../common/utils/sanitize';
+import { EmailService } from '../notifications/email.service';
+import { Ticket } from '../tickets/entities/ticket.entity';
 
 @Injectable()
 export class CommentsService {
   constructor(
     @InjectRepository(Comment)
     private commentsRepository: Repository<Comment>,
+    @InjectRepository(Ticket)
+    private ticketsRepository: Repository<Ticket>,
     private slackService: SlackService,
+    private emailService: EmailService,
   ) {}
 
   async create(createCommentInput: CreateCommentInput, userId: string): Promise<Comment> {
@@ -36,6 +41,25 @@ export class CommentsService {
     await this.slackService.notifyCommentAdded(fullComment).catch(err => {
       console.error('Failed to notify Slack of comment:', err);
     });
+
+    // Send email notification for public comments
+    if (!fullComment.isInternal && fullComment.ticket) {
+      const ticket = await this.ticketsRepository.findOne({
+        where: { id: fullComment.ticket.id },
+        relations: ['createdBy', 'assignedTo'],
+      });
+      if (ticket && ticket.createdBy) {
+        const commenterName = fullComment.user?.fullname || 'Support Team';
+        await this.emailService.sendCommentNotification(
+          ticket,
+          ticket.createdBy,
+          fullComment.content,
+          commenterName,
+        ).catch(err => {
+          console.error('Failed to send comment email notification:', err);
+        });
+      }
+    }
     
     return fullComment;
   }

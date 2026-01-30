@@ -90,7 +90,7 @@ export const useTicketStore = defineStore('ticket', () => {
 
   // Actions
   function setTickets(ticketList) {
-    tickets.value = ticketList
+    tickets.value = [...ticketList]
   }
 
   function setCurrentTicket(ticket) {
@@ -98,7 +98,7 @@ export const useTicketStore = defineStore('ticket', () => {
   }
 
   function addTicket(ticket) {
-    tickets.value.unshift(ticket)
+    tickets.value = [ticket, ...tickets.value]
   }
 
   function updateTicket(ticketId, updates) {

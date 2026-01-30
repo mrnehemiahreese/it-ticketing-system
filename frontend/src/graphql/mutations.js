@@ -45,7 +45,7 @@ export const CREATE_TICKET = gql`
       priority
       category
       workstationNumber
-      createdAt
+      updatedAt
       createdBy {
         id
         fullname
@@ -160,7 +160,7 @@ export const UPDATE_COMMENT = gql`
       id
       content
       isInternal
-      updatedAt
+      createdAt
     }
   }
 `

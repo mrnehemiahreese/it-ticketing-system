@@ -69,7 +69,6 @@ export const COMMENT_ADDED_SUBSCRIPTION = gql`
       content
       isInternal
       createdAt
-      updatedAt
       user {
         id
         fullname

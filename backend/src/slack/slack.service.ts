@@ -189,6 +189,29 @@ export class SlackService implements OnModuleInit {
 
         await this.ticketsRepository.save(ticket);
 
+        // Reload ticket with relations for email and pubsub
+        const fullTicket = await this.ticketsRepository.findOne({
+          where: { id: ticket.id },
+          relations: ['createdBy', 'assignedTo', 'comments', 'attachments'],
+        });
+
+        // Send email notifications if assigned
+        if (fullTicket && fullTicket.assignedTo) {
+          this.emailService.sendTicketAssignedNotification(fullTicket, fullTicket.assignedTo).catch(err => {
+            this.logger.error(`Failed to send assignment email to agent: ${err.message}`);
+          });
+          if (fullTicket.createdBy) {
+            this.emailService.sendTicketAssignedToCustomerNotification(fullTicket, fullTicket.createdBy, fullTicket.assignedTo).catch(err => {
+              this.logger.error(`Failed to send assignment email to customer: ${err.message}`);
+            });
+          }
+        }
+
+        // Publish real-time update
+        if (fullTicket) {
+          this.pubSub.publish('ticketUpdated', { ticketUpdated: fullTicket });
+        }
+
         // Post confirmation in thread
         if (ticket.slackThreadTs) {
           await client.chat.postMessage({
@@ -959,6 +982,17 @@ export class SlackService implements OnModuleInit {
       ticket.status = newStatus;
       await this.ticketsRepository.save(ticket);
 
+      // Send email notification on status change
+      const fullTicket = await this.ticketsRepository.findOne({
+        where: { id: ticket.id },
+        relations: ['createdBy'],
+      });
+      if (fullTicket?.createdBy) {
+        this.emailService.sendTicketStatusUpdateNotification(fullTicket, fullTicket.createdBy).catch(err => {
+          this.logger.error(`Failed to send status update email: ${err.message}`);
+        });
+      }
+
       this.logger.log(`Ticket ${ticket.ticketNumber} status updated to ${newStatus} via Slack command`);
       return `✅ Ticket ${ticket.ticketNumber} status updated to ${newStatus}`;
     } catch (error) {
@@ -1017,6 +1051,26 @@ export class SlackService implements OnModuleInit {
       // Assign ticket
       ticket.assignedToId = systemUser.id;
       await this.ticketsRepository.save(ticket);
+
+      // Reload ticket with relations for email and pubsub
+      const fullTicket = await this.ticketsRepository.findOne({
+        where: { id: ticket.id },
+        relations: ['createdBy', 'assignedTo', 'comments', 'attachments'],
+      });
+
+      // Send email notifications
+      if (fullTicket) {
+        this.emailService.sendTicketAssignedNotification(fullTicket, systemUser).catch(err => {
+          this.logger.error(`Failed to send assignment email to agent: ${err.message}`);
+        });
+        if (fullTicket.createdBy) {
+          this.emailService.sendTicketAssignedToCustomerNotification(fullTicket, fullTicket.createdBy, systemUser).catch(err => {
+            this.logger.error(`Failed to send assignment email to customer: ${err.message}`);
+          });
+        }
+        // Publish real-time update
+        this.pubSub.publish('ticketUpdated', { ticketUpdated: fullTicket });
+      }
 
       this.logger.log(
         `Assigned ticket ${ticket.ticketNumber} to ${systemUser.fullname} (Slack: ${systemUser.slackDisplayName}) via Slack`,
@@ -1166,6 +1220,26 @@ export class SlackService implements OnModuleInit {
       // Assign ticket
       ticket.assignedToId = user.id;
       await this.ticketsRepository.save(ticket);
+
+      // Reload ticket with relations for email and pubsub
+      const fullTicket = await this.ticketsRepository.findOne({
+        where: { id: ticket.id },
+        relations: ['createdBy', 'assignedTo', 'comments', 'attachments'],
+      });
+
+      // Send email notifications
+      if (fullTicket) {
+        this.emailService.sendTicketAssignedNotification(fullTicket, user).catch(err => {
+          this.logger.error(`Failed to send assignment email to agent: ${err.message}`);
+        });
+        if (fullTicket.createdBy) {
+          this.emailService.sendTicketAssignedToCustomerNotification(fullTicket, fullTicket.createdBy, user).catch(err => {
+            this.logger.error(`Failed to send assignment email to customer: ${err.message}`);
+          });
+        }
+        // Publish real-time update
+        this.pubSub.publish('ticketUpdated', { ticketUpdated: fullTicket });
+      }
 
       this.logger.log(`Assigned ticket ${ticket.ticketNumber} to ${user.fullname} via Slack`);
       return `✅ Ticket ${ticket.ticketNumber} assigned to ${user.fullname}`;
