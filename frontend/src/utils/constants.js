@@ -5,7 +5,6 @@ export const TICKET_STATUS = {
   RESOLVED: 'RESOLVED',
   CLOSED: 'CLOSED',
   ON_HOLD: 'ON_HOLD',
-  ARCHIVED: 'ARCHIVED',
 }
 
 export const TICKET_STATUS_LABELS = {
@@ -14,7 +13,6 @@ export const TICKET_STATUS_LABELS = {
   RESOLVED: 'Resolved',
   CLOSED: 'Closed',
   ON_HOLD: 'On Hold',
-  ARCHIVED: 'Archived',
 }
 
 export const TICKET_STATUS_COLORS = {
@@ -23,7 +21,6 @@ export const TICKET_STATUS_COLORS = {
   RESOLVED: 'success',
   CLOSED: 'grey',
   ON_HOLD: 'orange',
-  ARCHIVED: 'blue-grey',
 }
 
 // Ticket Priority

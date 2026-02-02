@@ -73,16 +73,22 @@
         </template>
 
         <!-- Role -->
-        <template v-slot:item.role="{ item }">
-          <v-chip :color="getRoleColor(item.role)" size="small">
-            {{ getRoleLabel(item.role) }}
+        <template v-slot:item.roles="{ item }">
+          <v-chip
+            v-for="role in (item.roles || [])"
+            :key="role"
+            :color="getRoleColor(role)"
+            size="small"
+            class="mr-1"
+          >
+            {{ getRoleLabel(role) }}
           </v-chip>
         </template>
 
         <!-- Status -->
-        <template v-slot:item.isActive="{ item }">
-          <v-chip :color="item.isActive ? 'success' : 'error'" size="small">
-            {{ item.isActive ? 'Active' : 'Inactive' }}
+        <template v-slot:item.isDisabled="{ item }">
+          <v-chip :color="item.isDisabled ? 'error' : 'success'" size="small">
+            {{ item.isDisabled ? 'Inactive' : 'Active' }}
           </v-chip>
         </template>
 
@@ -245,8 +251,8 @@ const headers = [
   { title: 'Name', key: 'name', sortable: true },
   { title: 'Department', key: 'department', sortable: true },
   { title: 'Phone', key: 'phoneNumber', sortable: false },
-  { title: 'Role', key: 'role', sortable: true },
-  { title: 'Status', key: 'isActive', sortable: true },
+  { title: 'Role', key: 'roles', sortable: false },
+  { title: 'Status', key: 'isDisabled', sortable: true },
   { title: 'Created', key: 'createdAt', sortable: true },
   { title: 'Actions', key: 'actions', sortable: false, align: 'center' }
 ]
@@ -269,11 +275,11 @@ const filteredUsers = computed(() => {
   let filtered = [...users.value]
 
   if (roleFilter.value) {
-    filtered = filtered.filter(u => u.role === roleFilter.value)
+    filtered = filtered.filter(u => u.roles?.includes(roleFilter.value))
   }
 
   if (statusFilter.value !== null) {
-    filtered = filtered.filter(u => u.isActive === statusFilter.value)
+    filtered = filtered.filter(u => !u.isDisabled === statusFilter.value)
   }
 
   return filtered
@@ -307,8 +313,8 @@ function openEditDialog(user) {
     password: '',
     phoneNumber: user.phoneNumber || '',
     department: user.department || '',
-    role: user.role,
-    isActive: user.isActive
+    role: user.roles?.[0] || 'USER',
+    isActive: !user.isDisabled
   }
   dialog.value = true
 }

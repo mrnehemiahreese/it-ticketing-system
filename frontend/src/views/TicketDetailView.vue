@@ -182,7 +182,7 @@
               </div>
 
               <!-- Assign Technician (Admin/Technician only) -->
-              <div v-if="authStore.isAdmin || authStore.isTechnician">
+              <div v-if="authStore.isAdmin || authStore.isAgent">
                 <v-select
                   v-model="selectedTechnician"
                   :items="technicians"
