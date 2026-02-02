@@ -29,6 +29,11 @@
 
     <v-spacer />
 
+    <!-- Dark Mode Toggle -->
+    <v-btn icon @click="toggleTheme">
+      <v-icon>{{ isDark ? 'mdi-weather-sunny' : 'mdi-weather-night' }}</v-icon>
+    </v-btn>
+
     <!-- Notifications -->
     <v-menu offset-y>
       <template v-slot:activator="{ props }">
@@ -112,12 +117,27 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useTheme } from 'vuetify'
 import { useAuthStore } from '@/stores/auth'
 import { getInitials, formatRelativeTime } from '@/utils/helpers'
 
 const emit = defineEmits(['toggle-drawer'])
 const router = useRouter()
+const theme = useTheme()
 const authStore = useAuthStore()
+
+// Theme
+const isDark = computed(() => theme.global.current.value.dark)
+function toggleTheme() {
+  const newTheme = isDark.value ? 'light' : 'dark'
+  theme.global.name.value = newTheme
+  localStorage.setItem('theme', newTheme)
+}
+// Restore saved theme
+const savedTheme = localStorage.getItem('theme')
+if (savedTheme) {
+  theme.global.name.value = savedTheme
+}
 
 // State
 const search = ref('')

@@ -22,7 +22,7 @@ export class UsersResolver {
   }
 
   @Query(() => [User], { name: 'users' })
-  @Roles(Role.ADMIN, Role.AGENT)
+  @Roles(Role.ADMIN, Role.AGENT, Role.USER)
   async findAll(): Promise<User[]> {
     return this.usersService.findAll();
   }
