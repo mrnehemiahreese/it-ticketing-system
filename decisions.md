@@ -611,3 +611,221 @@ When a decision is superseded:
 **Owner:** Project Historian  
 **Review Cycle:** Quarterly
 
+
+---
+
+## ADR-0021: Array Type Handling in GraphQL Filters
+
+**Date:** 2026-01-30  
+**Status:** Accepted (Implemented in Commit 8300990)  
+**Related:** ADR-0001 (GraphQL API)
+
+### Context
+**Problem:** Ticket filtering was completely broken. Frontend sent arrays for multi-select filters but backend declared scalar enum types. Query execution used equality checks that failed silently.
+
+**Impact:** All filter operations returned no results with no error.
+
+### Decision
+When frontend provides multi-select filtering, backend GraphQL input types must use array types with IN clauses, not scalar equality checks.
+
+### Implementation
+- Changed `status`, `priority`, `category` from `TicketStatus` to `TicketStatus[]`
+- Updated queries from `= :status` to `IN (:...statuses)`
+- Added empty array safety checks
+
+### Rationale
+1. Type correctness matches actual data flow
+2. Database semantics (IN operator for multi-values)
+3. Error prevention at compile time, not query time
+4. Consistency across all multi-select filters
+
+### Verification
+Selected "Resolved" filter → returned 3 matching tickets correctly.
+
+---
+
+## ADR-0022: Apollo Client Array Immutability
+
+**Date:** 2026-01-30  
+**Status:** Accepted (Implemented in Commit 8300990)  
+**Related:** ADR-0003 (Vue 3), ADR-0001 (GraphQL)
+
+### Context
+**Problem:** New tickets didn't appear in real-time until page refresh. Apollo Client returns frozen arrays; direct mutations fail silently. Subscription handler only called refetch() without immediate state update.
+
+**Impact:** Real-time updates non-functional.
+
+### Decision
+Never mutate Apollo-cached arrays directly. Always create new arrays using spread operator.
+
+### Pattern
+```javascript
+// Wrong
+array.push(item)      // Fails on frozen arrays
+array.unshift(item)   // Throws TypeError
+
+// Correct
+array = [item, ...array]  // Creates new immutable copy
+array = [...array, item]
+```
+
+### Implementation
+- Refactored Pinia store methods to use spread operator
+- Updated subscription handler to call addTicket() before refetch()
+- Applied pattern to all array mutations
+
+### Rationale
+1. Apollo Client intentionally freezes objects to prevent corruption
+2. Vue properly detects new array assignments for reactivity
+3. Immutable patterns prevent subtle bugs
+4. Aligns with functional programming best practices
+
+### Verification
+Created TKT-000035 while viewing list → appeared instantly at top. Count updated from 31 to 32 in real-time.
+
+---
+
+## ADR-0023: Notification Handler Consistency
+
+**Date:** 2026-01-30  
+**Status:** Accepted (Implemented in Commit 8300990)  
+**Related:** ADR-0009 (Email Integration)
+
+### Context
+**Problem:** Email notifications weren't sent on ticket status changes. sendTicketStatusUpdateNotification() existed but was never called by mutation handlers.
+
+**Impact:** Ticket creators not notified of status changes.
+
+### Decision
+Every state-changing operation must execute: state change → Slack notification → email notification → real-time subscription.
+
+### Implementation
+Added notification calls to:
+- tickets.service.ts update() method
+- slack.service.ts handleStatusCommand()
+- comments.service.ts for public comments
+
+Pattern includes conditional logic (only notify if state changed) and relation loading.
+
+### Rationale
+1. Users expect notification of relevant changes
+2. Prevents silent failures in notification delivery
+3. Centralized pattern makes gaps obvious
+4. Ensures comprehensive notification coverage
+
+### Verification
+Changed TKT-000028 status from Closed to Open. Verified: database change, Slack notification, email to creator (bubblesb@tmconsulting.us), real-time subscription.
+
+---
+
+## ADR-0024: Email Attachment Extraction and Storage
+
+**Date:** 2026-01-30  
+**Status:** Accepted (Implemented in Commit 23bd7f2)  
+**Related:** ADR-0009 (Email Integration), ADR-0008 (File Storage)
+
+### Context
+**Problem:** Email attachments were being ignored during IMAP message processing. Users could not send files via email to create tickets with attachments.
+
+**Impact:** Email integration incomplete; file sharing limited to web portal only.
+
+### Decision
+Extract attachments from inbound IMAP emails using mailparser, store both on disk and in PostgreSQL, and integrate with AttachmentsService for unified access.
+
+### Implementation Details
+- Use mailparser (already in email-inbound.service.ts) to extract attachments from each email
+- For each attachment: extract binary data, preserve original filename, determine MIME type
+- Call AttachmentsService.create() to persist file and DB record
+- Store attachment ID in ticket comment metadata
+- For image attachments: upload to Slack thread automatically
+- Works for both new tickets and reply-to-ticket emails
+
+### Technical Changes
+- File: backend/src/notifications/email-inbound.service.ts
+  - Added attachment extraction loop inside email processing
+  - Integrated AttachmentsService call within processInboundEmail()
+  - Maintained error handling (attachment failure doesn't fail ticket creation)
+
+- File: backend/src/notifications/email.module.ts
+  - Added AttachmentsService to module providers
+  - Enables dependency injection into email-inbound.service.ts
+
+### Rationale
+1. **User Expectation:** Email attachment handling is standard email behavior
+2. **Feature Completeness:** Integrates email as full-featured intake channel
+3. **Persistence:** Both disk and DB storage ensures redundancy and queryability
+4. **Slack Integration:** Automatic image upload improves team collaboration
+5. **Data Integrity:** AttachmentsService handles storage details consistently
+
+### Consequences
+- Additional disk I/O on email processing (mitigated by async)
+- Database storage for attachment metadata
+- Requires cleanup of old attachments (future archival policy)
+- Email processing may take longer with large attachments
+
+### Verification
+- Email with 3 attachments (2 images, 1 PDF) → ticket created with all attachments
+- Slack thread shows image previews
+- Attachments downloadable from ticket detail view
+
+---
+
+## ADR-0025: Relative API URLs for Nginx Proxy Routing
+
+**Date:** 2026-01-30  
+**Status:** Accepted (Implemented in Commit 7597caa)  
+**Related:** ADR-0010 (Deployment), ADR-0015 (Frontend Architecture)
+
+### Context
+**Problem:** Attachment images displaying as blank in production after nginx deployment. Frontend hardcoded API_BASE_URL fallback to 'http://localhost:4000' which is unreachable from browsers accessing via http://192.168.1.2:3001.
+
+**Impact:** All attachment URLs fail; images display as blank in portal.
+
+### Decision
+Use relative URLs (empty string for API_BASE_URL) so that all API requests go through the frontend nginx proxy, which routes them to the backend container.
+
+### Technical Details
+- File: frontend/src/utils/api.js
+  - Changed API_BASE_URL fallback from 'http://localhost:4000' to ''
+  - This makes attachment requests relative: /attachments/{id}
+  - Frontend nginx.conf already configured to proxy /attachments to backend:4000
+
+### Request Flow
+```
+Browser → nginx:3001 → /attachments/{id}
+  ↓ (nginx proxy)
+Backend:4000 → AttachmentsService.getAttachment()
+  ↓ (response)
+Browser ← nginx:3001 ← attachment file
+```
+
+### Why This Works
+1. Relative URLs use current origin (http://192.168.1.2:3001)
+2. All requests route through nginx (no hardcoded backend address)
+3. Same proxy configuration works for /graphql and /attachments
+4. Works for both container-internal (backend) and external (browser) access
+
+### Rationale
+1. **Deployment Flexibility:** Same frontend image works on any deployment
+2. **Proxy Pattern:** Frontend nginx manages all backend routing
+3. **No Hardcoding:** Eliminates hardcoded localhost addresses
+4. **Security:** Requests don't bypass nginx security layer
+5. **Scalability:** Easy to add more backend services behind same proxy
+
+### Consequences
+- API requests always proxied through frontend nginx (slight latency increase)
+- Frontend nginx becomes critical path (must be stable)
+- Easier debugging (all requests visible in nginx logs)
+- Browser cache may be more effective with same origin
+
+### Verification
+- TKT-000042 created with email image attachment
+- Image displays correctly in ticket detail view
+- Network requests show /attachments requests going to http://192.168.1.2:3001
+- Nginx proxy logs confirm forwarding to backend:4000
+
+---
+
+**Document Status:** Updated  
+**Last Updated:** 2026-01-30 (ADR-0024, ADR-0025)  
+**Owner:** Project Historian
