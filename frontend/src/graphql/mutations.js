@@ -25,9 +25,8 @@ export const REGISTER_MUTATION = gql`
       user {
         id
         email
-        firstName
-        lastName
-        role
+        fullname
+        roles
       }
     }
   }
@@ -45,7 +44,7 @@ export const CREATE_TICKET = gql`
       priority
       category
       workstationNumber
-      updatedAt
+      createdAt
       createdBy {
         id
         fullname
@@ -55,7 +54,7 @@ export const CREATE_TICKET = gql`
 `
 
 export const UPDATE_TICKET = gql`
-  mutation UpdateTicket($id: String!, $updateTicketInput: UpdateTicketInput!) {
+  mutation UpdateTicket($id: String!, $input: UpdateTicketInput!) {
     updateTicket(id: $id, updateTicketInput: $updateTicketInput) {
       id
       ticketNumber
@@ -90,8 +89,8 @@ export const ASSIGN_TICKET = gql`
 `
 
 export const UPDATE_TICKET_STATUS = gql`
-  mutation UpdateTicketStatus($id: String!, $updateTicketInput: UpdateTicketInput!) {
-    updateTicket(id: $id, updateTicketInput: $updateTicketInput) {
+  mutation UpdateTicketStatus($id: String!, $status: TicketStatus!) {
+    updateTicket(id: $id, updateTicketInput: { status: $status }) {
       id
       status
       resolvedAt
@@ -160,7 +159,7 @@ export const UPDATE_COMMENT = gql`
       id
       content
       isInternal
-      createdAt
+      updatedAt
     }
   }
 `
@@ -216,7 +215,7 @@ export const CREATE_USER = gql`
 `
 
 export const UPDATE_USER = gql`
-  mutation UpdateUser($id: String!, $updateUserInput: UpdateUserInput!) {
+  mutation UpdateUser($id: String!, $input: UpdateUserInput!) {
     updateUser(id: $id, updateUserInput: $updateUserInput) {
       id
       email
@@ -256,27 +255,6 @@ export const CHANGE_PASSWORD = gql`
     changePassword(oldPassword: $oldPassword, newPassword: $newPassword) {
       success
       message
-    }
-  }
-`
-
-// User self-resolve mutation
-export const USER_MARK_RESOLVED = gql`
-  mutation UserMarkResolved($ticketId: String!) {
-    userMarkResolved(ticketId: $ticketId) {
-      id
-      status
-      resolvedAt
-    }
-  }
-`
-
-export const ARCHIVE_TICKET = gql`
-  mutation ArchiveTicket($id: String!) {
-    archiveTicket(id: $id) {
-      id
-      status
-      archivedAt
     }
   }
 `

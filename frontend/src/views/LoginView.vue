@@ -8,17 +8,16 @@
               <v-card-text>
                 <div class="text-center mb-6">
                   <v-icon size="64" color="primary">mdi-ticket-confirmation</v-icon>
-                  <h1 class="text-h4 font-weight-bold mt-4">TM Support Portal</h1>
+                  <h1 class="text-h4 font-weight-bold mt-4">IT Ticketing System</h1>
                   <p class="text-subtitle-1 text-grey mt-2">Sign in to continue</p>
                 </div>
 
                 <v-form ref="formRef" @submit.prevent="handleLogin">
                   <v-text-field
-                    v-model="formData.email"
-                    label="Email"
-                    type="email"
-                    prepend-inner-icon="mdi-email"
-                    :rules="[rules.required, rules.email]"
+                    v-model="formData.username"
+                    label="Username or Email"
+                    prepend-inner-icon="mdi-account"
+                    :rules="[rules.required]"
                     variant="outlined"
                     density="comfortable"
                     class="mb-3"
@@ -62,16 +61,14 @@
                 <v-divider class="my-4" />
 
                 <div class="text-center text-caption text-grey">
-                  <p>Default credentials:</p>
-                  <p class="font-weight-medium">Admin: admin@example.com / admin123</p>
-                  <p class="font-weight-medium">Technician: tech@example.com / tech123</p>
-                  <p class="font-weight-medium">User: user@example.com / user123</p>
+                  <p>Sign in with your username or email address.</p>
+                  <p>Contact your administrator if you need an account.</p>
                 </div>
               </v-card-text>
             </v-card>
 
             <div class="text-center mt-4 text-caption text-grey">
-              &copy; 2026 TM Support Portal. All rights reserved.
+              &copy; 2026 IT Ticketing System. All rights reserved.
             </div>
           </v-col>
         </v-row>
@@ -101,7 +98,7 @@ const loading = ref(false)
 const error = ref('')
 
 const formData = ref({
-  email: '',
+  username: '',
   password: ''
 })
 
@@ -119,7 +116,7 @@ async function handleLogin() {
 
   try {
     const result = await login({
-      username: formData.value.email,
+      username: formData.value.username,
       password: formData.value.password
     })
 

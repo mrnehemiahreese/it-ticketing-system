@@ -48,39 +48,48 @@
       <v-divider class="my-3" />
 
       <div class="d-flex align-center justify-space-between">
-        <div class="d-flex align-center">
+        <div v-if="ticket.createdBy" class="d-flex align-center">
           <v-avatar
-            :color="getAvatarColor(ticket.createdBy?.fullname)"
+            :color="getAvatarColor(ticket.createdBy.fullname || ticket.createdBy.username)"
             size="32"
             class="mr-2"
           >
             <span class="text-caption">
-              {{ getInitials(ticket.createdBy?.fullname) }}
+              {{ getInitials(ticket.createdBy.fullname || ticket.createdBy.username) }}
             </span>
           </v-avatar>
           <div>
             <div class="text-caption font-weight-medium">
-              {{ ticket.createdBy?.fullname }}
+              {{ ticket.createdBy.fullname || ticket.createdBy.username }}
             </div>
             <div class="text-caption text-grey">
               Created by
             </div>
           </div>
         </div>
+        <div v-else class="d-flex align-center">
+          <v-avatar color="grey" size="32" class="mr-2">
+            <span class="text-caption">?</span>
+          </v-avatar>
+          <div>
+            <div class="text-caption font-weight-medium text-grey">Unknown</div>
+            <div class="text-caption text-grey">Created by</div>
+          </div>
+        </div>
 
         <div v-if="ticket.assignedTo" class="d-flex align-center">
           <v-avatar
-            :color="getAvatarColor(ticket.assignedTo?.fullname)"
+            :color="getAvatarColor(ticket.assignedTo.fullname || ticket.assignedTo.username)"
             size="32"
             class="mr-2"
           >
             <span class="text-caption">
-              {{ getInitials(ticket.assignedTo?.fullname) }}
+              {{ getInitials(ticket.assignedTo.fullname || ticket.assignedTo.username) }}
             </span>
           </v-avatar>
           <div>
             <div class="text-caption font-weight-medium">
-              {{ ticket.assignedTo?.fullname }}
+              {{ ticket.assignedTo.fullname || ticket.assignedTo.username }}
             </div>
             <div class="text-caption text-grey">
               Assigned to

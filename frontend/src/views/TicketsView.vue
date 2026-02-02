@@ -18,7 +18,7 @@
         <v-col cols="12" md="3">
           <TicketFilters
             v-model="filters"
-            :agents="agentsForFilter"
+            :technicians="techniciansForFilter"
             @apply="applyFilters"
           />
         </v-col>
@@ -125,9 +125,8 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useQuery, useSubscription } from '@vue/apollo-composable'
+import { useQuery } from '@vue/apollo-composable'
 import { useTicketStore } from '@/stores/ticket'
-import { NEW_TICKET_SUBSCRIPTION } from "@/graphql/subscriptions"
 import { GET_TICKETS, GET_TECHNICIANS } from '@/graphql/queries'
 import { debounce } from '@/utils/helpers'
 import TicketTable from '@/components/tickets/TicketTable.vue'
@@ -161,18 +160,18 @@ const { result: ticketsResult, loading, refetch } = useQuery(GET_TICKETS, () => 
   return Object.keys(cleanFilters).length > 0 ? { filters: cleanFilters } : {}
 })
 
-// Fetch agents for filter
-const { result: agentsResult } = useQuery(GET_TECHNICIANS)
+// Fetch technicians for filter
+const { result: techniciansResult } = useQuery(GET_TECHNICIANS)
 
 const tickets = computed(() => ticketsResult.value?.tickets || [])
 const totalTickets = computed(() => tickets.value.length)
 const totalPages = computed(() => Math.ceil(totalTickets.value / itemsPerPage.value))
 
-const agentsForFilter = computed(() => {
-  const techs = agentsResult.value?.users || []
+const techniciansForFilter = computed(() => {
+  const techs = techniciansResult.value?.users || []
   return techs.map(t => ({
     id: t.id,
-    name: t.fullname
+    name: t.fullname || t.username
   }))
 })
 
@@ -190,15 +189,6 @@ const filteredTickets = computed(() => {
 })
 
 // Watch for tickets changes and update store
-// Subscribe to new tickets for real-time updates
-const { onResult: onNewTicket } = useSubscription(NEW_TICKET_SUBSCRIPTION)
-onNewTicket((data) => {
-  if (data.data?.newTicket) {
-    ticketStore.addTicket(data.data.newTicket)
-    refetch()
-  }
-})
-
 watch(tickets, (newTickets) => {
   ticketStore.setTickets(newTickets)
 }, { immediate: true })

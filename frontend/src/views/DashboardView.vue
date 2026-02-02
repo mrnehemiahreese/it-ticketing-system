@@ -2,13 +2,6 @@
     <div>
       <h1 class="text-h4 font-weight-bold mb-6">Dashboard</h1>
 
-      <!-- Verse of the Day -->
-      <v-row class="mb-6">
-        <v-col cols="12" md="6">
-          <VerseOfTheDay />
-        </v-col>
-      </v-row>
-
       <!-- Stats Cards -->
       <v-row class="mb-6">
         <v-col cols="12" sm="6" md="3">
@@ -122,11 +115,11 @@
                 >
                   <template v-slot:prepend>
                     <v-avatar
-                      :color="getAvatarColor(ticket.createdBy.fullname)"
+                      :color="getAvatarColor(ticket.createdBy?.fullname || ticket.createdBy?.username || '')"
                       size="40"
                     >
                       <span class="text-caption">
-                        {{ getInitials(ticket.createdBy.fullname) }}
+                        {{ getInitials(ticket.createdBy?.fullname || ticket.createdBy?.username || '?') }}
                       </span>
                     </v-avatar>
                   </template>
@@ -220,13 +213,11 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { useQuery, useSubscription } from '@vue/apollo-composable'
+import { useQuery } from '@vue/apollo-composable'
 import { useTicketStore } from '@/stores/ticket'
 import { GET_TICKETS } from '@/graphql/queries'
-import { NEW_TICKET_SUBSCRIPTION } from '@/graphql/subscriptions'
 import { formatRelativeTime, getInitials, getAvatarColor } from '@/utils/helpers'
 import StatsCard from '@/components/common/StatsCard.vue'
-import VerseOfTheDay from '@/components/common/VerseOfTheDay.vue'
 import StatusChip from '@/components/tickets/StatusChip.vue'
 import PriorityChip from '@/components/tickets/PriorityChip.vue'
 
@@ -235,32 +226,8 @@ const ticketStore = useTicketStore()
 // Fetch recent tickets
 const { result, loading } = useQuery(GET_TICKETS)
 
+
 const recentTickets = computed(() => result.value?.tickets || [])
-
-// Subscribe to new tickets
-const { onResult: onNewTicket } = useSubscription(NEW_TICKET_SUBSCRIPTION)
-
-onNewTicket((data) => {
-  if (data.data?.newTicket) {
-    const newTicket = data.data.newTicket
-    // Check if ticket is not already in list
-    if (!recentTickets.value.find(t => t.id === newTicket.id)) {
-      // Insert at the beginning to show latest tickets first
-      recentTickets.value.unshift(newTicket)
-      // Keep only the 10 most recent
-      if (recentTickets.value.length > 10) {
-        recentTickets.value.pop()
-      }
-      // Update store and activity log
-      ticketStore.addTicket(newTicket)
-      addActivityLog({
-        message: `New ticket created: ${newTicket.ticketNumber}`,
-        icon: 'mdi-ticket-plus',
-        color: 'primary'
-      })
-    }
-  }
-})
 
 // Populate store with tickets for stats computation
 watch(() => result.value?.tickets, (tickets) => {
@@ -276,30 +243,28 @@ const resolvedPercentage = computed(() => {
   if (stats.value.total === 0) return 0
   return Math.round((stats.value.resolved / stats.value.total) * 100)
 })
-
-// Activity log with real-time updates
-const recentActivity = ref([
-  {
-    id: 1,
-    message: 'Recent activity will appear here',
-    timestamp: new Date(),
-    icon: 'mdi-information',
-    color: 'info'
-  }
-])
-
-function addActivityLog(activity) {
-  const newActivity = {
-    id: recentActivity.value.length + 1,
-    ...activity,
-    timestamp: new Date()
-  }
-  recentActivity.value.unshift(newActivity)
-  // Keep only the 5 most recent activities
-  if (recentActivity.value.length > 5) {
-    recentActivity.value.pop()
-  }
-}
+// Derive recent activity from actual tickets
+const recentActivity = computed(() => {
+  const tickets = recentTickets.value.slice(0, 5)
+  return tickets.map((ticket, index) => {
+    const creator = ticket.createdBy?.fullname || ticket.createdBy?.username || 'Someone'
+    const statusIcons = {
+      OPEN: { icon: 'mdi-ticket-plus', color: 'primary', verb: 'opened' },
+      IN_PROGRESS: { icon: 'mdi-clock-outline', color: 'warning', verb: 'started working on' },
+      RESOLVED: { icon: 'mdi-check-circle', color: 'success', verb: 'resolved' },
+      CLOSED: { icon: 'mdi-close-circle', color: 'grey', verb: 'closed' },
+      ON_HOLD: { icon: 'mdi-pause-circle', color: 'orange', verb: 'put on hold' },
+    }
+    const info = statusIcons[ticket.status] || statusIcons.OPEN
+    return {
+      id: ticket.id,
+      message: `${ticket.ticketNumber} ${info.verb} by ${creator}`,
+      timestamp: ticket.updatedAt || ticket.createdAt,
+      icon: info.icon,
+      color: info.color,
+    }
+  })
+})
 
 onMounted(() => {
   // Update ticket store when data is loaded

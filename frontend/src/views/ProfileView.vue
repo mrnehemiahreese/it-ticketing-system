@@ -9,27 +9,14 @@
             <v-divider />
             <v-card-text>
               <v-form ref="formRef" @submit.prevent="handleUpdateProfile">
-                <v-row>
-                  <v-col cols="12" md="6">
-                    <v-text-field
-                      v-model="formData.firstName"
-                      label="First Name"
-                      :rules="[rules.required]"
-                      variant="outlined"
-                      density="comfortable"
-                    />
-                  </v-col>
-
-                  <v-col cols="12" md="6">
-                    <v-text-field
-                      v-model="formData.lastName"
-                      label="Last Name"
-                      :rules="[rules.required]"
-                      variant="outlined"
-                      density="comfortable"
-                    />
-                  </v-col>
-                </v-row>
+                <v-text-field
+                  v-model="formData.fullname"
+                  label="Full Name"
+                  :rules="[rules.required]"
+                  variant="outlined"
+                  density="comfortable"
+                  class="mb-3"
+                />
 
                 <v-text-field
                   v-model="formData.email"
@@ -120,12 +107,12 @@
           <v-card elevation="2">
             <v-card-text class="text-center">
               <v-avatar
-                :color="getAvatarColor(authStore.user?.firstName || '')"
+                :color="getAvatarColor(authStore.user?.fullname || authStore.user?.username || '')"
                 size="120"
                 class="mb-4"
               >
                 <span class="text-h3">
-                  {{ getInitials(authStore.user?.firstName, authStore.user?.lastName) }}
+                  {{ getInitials(authStore.user?.fullname || authStore.user?.username) }}
                 </span>
               </v-avatar>
 
@@ -188,8 +175,7 @@ const loading = ref(false)
 const passwordLoading = ref(false)
 
 const formData = ref({
-  firstName: '',
-  lastName: '',
+  fullname: '',
   email: '',
   phoneNumber: '',
   department: ''
@@ -213,8 +199,7 @@ const { mutate: changePassword } = useMutation(CHANGE_PASSWORD)
 onMounted(() => {
   if (authStore.user) {
     formData.value = {
-      firstName: authStore.user.firstName,
-      lastName: authStore.user.lastName,
+      fullname: authStore.user.fullname || '',
       email: authStore.user.email,
       phoneNumber: authStore.user.phoneNumber || '',
       department: authStore.user.department || ''

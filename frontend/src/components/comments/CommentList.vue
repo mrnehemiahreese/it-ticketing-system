@@ -17,11 +17,11 @@
           <v-list-item class="px-4 py-4">
             <template v-slot:prepend>
               <v-avatar
-                :color="getAvatarColor(comment.user?.fullname)"
+                :color="getAvatarColor(comment.user.fullname || comment.user.username)"
                 size="40"
               >
                 <span class="text-body-2">
-                  {{ getInitialsFromFullname(comment.user?.fullname) }}
+                  {{ getInitials(comment.user.fullname || comment.user.username) }}
                 </span>
               </v-avatar>
             </template>
@@ -29,7 +29,7 @@
             <div>
               <div class="d-flex align-center mb-2">
                 <span class="font-weight-medium mr-2">
-                  {{ comment.user?.fullname || 'Unknown' }}
+                  {{ comment.user.fullname || comment.user.username }}
                 </span>
                 <span class="text-caption text-grey mr-2">
                   {{ formatRelativeTime(comment.createdAt) }}
@@ -90,7 +90,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { formatRelativeTime, getAvatarColor } from '@/utils/helpers'
+import { formatRelativeTime, getInitials, getAvatarColor } from '@/utils/helpers'
 
 const props = defineProps({
   comments: {
@@ -109,15 +109,8 @@ const sortedComments = computed(() => {
   )
 })
 
-function getInitialsFromFullname(fullname) {
-  if (!fullname) return '?'
-  const parts = fullname.trim().split(' ')
-  if (parts.length === 1) return parts[0].charAt(0).toUpperCase()
-  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
-}
-
 function canEditComment(comment) {
-  return authStore.user?.id === comment.user?.id || authStore.isAdmin
+  return authStore.user?.id === comment.user.id || authStore.isAdmin
 }
 
 function editComment(comment) {

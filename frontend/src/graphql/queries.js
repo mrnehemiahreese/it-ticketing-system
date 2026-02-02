@@ -29,8 +29,6 @@ export const GET_TICKETS = gql`
       priority
       category
       workstationNumber
-      source
-      contactEmail
       createdAt
       updatedAt
       resolvedAt
@@ -68,8 +66,6 @@ export const GET_TICKET = gql`
       priority
       category
       workstationNumber
-      source
-      contactEmail
       createdAt
       updatedAt
       resolvedAt
@@ -130,14 +126,21 @@ export const GET_MY_TICKETS = gql`
       priority
       category
       workstationNumber
-      source
-      contactEmail
       createdAt
       updatedAt
+      createdBy {
+        id
+        fullname
+        username
+        email
+      }
       assignedTo {
         id
         fullname
         username
+      }
+      attachments {
+        id
       }
       comments {
         id
@@ -227,123 +230,6 @@ export const GET_TECHNICIANS = gql`
       fullname
       username
       email
-    }
-  }
-`
-
-// Analytics Queries
-export const GET_TICKET_STATISTICS = gql`
-  query GetTicketStatistics {
-    ticketStatistics {
-      total
-      byStatus {
-        open
-        inProgress
-        resolved
-        closed
-        pending
-        reopened
-      }
-    }
-  }
-`
-
-export const GET_TICKETS_BY_PRIORITY = gql`
-  query GetTicketsByPriority {
-    ticketsByPriority {
-      low
-      medium
-      high
-      urgent
-    }
-  }
-`
-
-export const GET_AGENT_PERFORMANCE = gql`
-  query GetAgentPerformance {
-    agentPerformance {
-      agent {
-        id
-        fullname
-        email
-      }
-      assigned
-      resolved
-      closed
-      total
-    }
-  }
-`
-
-export const GET_TICKET_TRENDS = gql`
-  query GetTicketTrends($days: Int) {
-    ticketTrends(days: $days) {
-      date
-      count
-    }
-  }
-`
-
-export const GET_AVERAGE_RESOLUTION_TIME = gql`
-  query GetAverageResolutionTime {
-    averageResolutionTime
-    ticketsBySource {
-      portal
-      email
-      slack
-    }
-  }
-`
-
-export const GET_ANALYTICS_OVERVIEW = gql`
-  query GetAnalyticsOverview($days: Int) {
-    ticketStatistics {
-      total
-      byStatus {
-        open
-        inProgress
-        resolved
-        closed
-        pending
-        reopened
-      }
-    }
-    ticketsByPriority {
-      low
-      medium
-      high
-      urgent
-    }
-    agentPerformance {
-      agent {
-        id
-        fullname
-        email
-      }
-      assigned
-      resolved
-      closed
-      total
-    }
-    ticketTrends(days: $days) {
-      date
-      count
-    }
-    averageResolutionTime
-    ticketsBySource {
-      portal
-      email
-      slack
-    }
-  }
-`
-
-export const GET_TICKETS_BY_SOURCE = gql`
-  query GetTicketsBySource {
-    ticketsBySource {
-      portal
-      email
-      slack
     }
   }
 `

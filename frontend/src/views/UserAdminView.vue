@@ -59,24 +59,36 @@
         :search="search"
         class="elevation-2"
       >
-        <!-- Roles -->
-        <template v-slot:item.roles="{ item }">
-          <v-chip
-            v-for="role in (Array.isArray(item.roles) ? item.roles : [item.roles])"
-            :key="role"
-            :color="getRoleColor(role)"
-            size="small"
-            class="mr-1"
-          >
-            {{ getRoleLabel(role) }}
+        <!-- Name -->
+        <template v-slot:item.name="{ item }">
+          <div class="d-flex align-center">
+            <v-avatar :color="getAvatarColor(item.fullname || item.username)" size="32" class="mr-3">
+              <span class="text-caption">{{ getInitials(item.fullname || item.username) }}</span>
+            </v-avatar>
+            <div>
+              <div class="font-weight-medium">{{ item.fullname || item.username }}</div>
+              <div class="text-caption text-grey">{{ item.email }}</div>
+            </div>
+          </div>
+        </template>
+
+        <!-- Role -->
+        <template v-slot:item.role="{ item }">
+          <v-chip :color="getRoleColor(item.role)" size="small">
+            {{ getRoleLabel(item.role) }}
           </v-chip>
         </template>
 
         <!-- Status -->
-        <template v-slot:item.isDisabled="{ item }">
-          <v-chip :color="item.isDisabled ? 'error' : 'success'" size="small">
-            {{ item.isDisabled ? 'Disabled' : 'Active' }}
+        <template v-slot:item.isActive="{ item }">
+          <v-chip :color="item.isActive ? 'success' : 'error'" size="small">
+            {{ item.isActive ? 'Active' : 'Inactive' }}
           </v-chip>
+        </template>
+
+        <!-- Created At -->
+        <template v-slot:item.createdAt="{ item }">
+          {{ formatDate(item.createdAt) }}
         </template>
 
         <!-- Actions -->
@@ -101,16 +113,6 @@
 
         <v-card-text>
           <v-form ref="formRef">
-            <v-text-field
-              v-model="userForm.username"
-              label="Username"
-              :rules="[rules.required]"
-              variant="outlined"
-              density="comfortable"
-              class="mb-3"
-              :disabled="editMode"
-            />
-
             <v-text-field
               v-model="userForm.fullname"
               label="Full Name"
@@ -151,32 +153,28 @@
             />
 
             <v-text-field
-              v-model="userForm.workstationNumber"
-              label="Workstation Number"
+              v-model="userForm.department"
+              label="Department"
               variant="outlined"
               density="comfortable"
               class="mb-3"
             />
 
             <v-select
-              v-model="userForm.roles"
-              label="Roles"
+              v-model="userForm.role"
+              label="Role"
               :items="roleOptions"
               :rules="[rules.required]"
               variant="outlined"
               density="comfortable"
               class="mb-3"
-              multiple
-              chips
             />
 
             <v-switch
-              v-model="userForm.isDisabled"
-              label="Disabled"
-              color="error"
+              v-model="userForm.isActive"
+              label="Active"
+              color="success"
               hide-details
-              false-value="false"
-              true-value="true"
             />
           </v-form>
         </v-card-text>
@@ -232,25 +230,24 @@ const selectedUser = ref(null)
 const formRef = ref(null)
 
 const userForm = ref({
-  username: '',
   fullname: '',
   email: '',
   password: '',
   phoneNumber: '',
-  workstationNumber: '',
-  roles: ['USER'],
-  isDisabled: false
+  department: '',
+  role: 'USER',
+  isActive: true
 })
 
 const rules = VALIDATION_RULES
 
 const headers = [
-  { title: 'Username', key: 'username', sortable: true },
-  { title: 'Full Name', key: 'fullname', sortable: true },
-  { title: 'Email', key: 'email', sortable: true },
-  { title: 'Workstation', key: 'workstationNumber', sortable: true },
-  { title: 'Roles', key: 'roles', sortable: true },
-  { title: 'Status', key: 'isDisabled', sortable: true },
+  { title: 'Name', key: 'name', sortable: true },
+  { title: 'Department', key: 'department', sortable: true },
+  { title: 'Phone', key: 'phoneNumber', sortable: false },
+  { title: 'Role', key: 'role', sortable: true },
+  { title: 'Status', key: 'isActive', sortable: true },
+  { title: 'Created', key: 'createdAt', sortable: true },
   { title: 'Actions', key: 'actions', sortable: false, align: 'center' }
 ]
 
@@ -272,14 +269,11 @@ const filteredUsers = computed(() => {
   let filtered = [...users.value]
 
   if (roleFilter.value) {
-    filtered = filtered.filter(u => {
-      const roles = Array.isArray(u.roles) ? u.roles : [u.roles]
-      return roles.includes(roleFilter.value)
-    })
+    filtered = filtered.filter(u => u.role === roleFilter.value)
   }
 
   if (statusFilter.value !== null) {
-    filtered = filtered.filter(u => u.isDisabled === !statusFilter.value)
+    filtered = filtered.filter(u => u.isActive === statusFilter.value)
   }
 
   return filtered
@@ -293,14 +287,13 @@ const { mutate: deleteUserMutation } = useMutation(DELETE_USER)
 function openCreateDialog() {
   editMode.value = false
   userForm.value = {
-    username: '',
     fullname: '',
     email: '',
     password: '',
     phoneNumber: '',
-    workstationNumber: '',
-    roles: ['USER'],
-    isDisabled: false
+    department: '',
+    role: 'USER',
+    isActive: true
   }
   dialog.value = true
 }
@@ -309,14 +302,13 @@ function openEditDialog(user) {
   editMode.value = true
   selectedUser.value = user
   userForm.value = {
-    username: user.username,
-    fullname: user.fullname,
+    fullname: user.fullname || user.username || '',
     email: user.email,
     password: '',
     phoneNumber: user.phoneNumber || '',
-    workstationNumber: user.workstationNumber || '',
-    roles: Array.isArray(user.roles) ? user.roles : [user.roles],
-    isDisabled: user.isDisabled || false
+    department: user.department || '',
+    role: user.role,
+    isActive: user.isActive
   }
   dialog.value = true
 }
@@ -336,13 +328,12 @@ async function saveUser() {
 
   try {
     const input = {
-      username: userForm.value.username,
       fullname: userForm.value.fullname,
       email: userForm.value.email,
       phoneNumber: userForm.value.phoneNumber || null,
-      workstationNumber: userForm.value.workstationNumber || null,
-      roles: userForm.value.roles,
-      isDisabled: userForm.value.isDisabled
+      department: userForm.value.department || null,
+      role: userForm.value.role,
+      isActive: userForm.value.isActive
     }
 
     if (!editMode.value) {

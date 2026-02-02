@@ -7,29 +7,8 @@
   >
     <v-app-bar-nav-icon @click="emit('toggle-drawer')" />
 
-    <v-toolbar-title class="text-h6 font-weight-bold d-flex align-center">
-      <span>TM Support Portal</span>
-      <!-- Portal indicator badge -->
-      <v-chip
-        v-if="authStore.isCustomer"
-        color="white"
-        variant="flat"
-        size="small"
-        class="ml-3"
-      >
-        <v-icon start size="small">mdi-account</v-icon>
-        Customer Portal
-      </v-chip>
-      <v-chip
-        v-else
-        color="white"
-        variant="flat"
-        size="small"
-        class="ml-3"
-      >
-        <v-icon start size="small">mdi-shield-account</v-icon>
-        Agent Portal
-      </v-chip>
+    <v-toolbar-title class="text-h6 font-weight-bold">
+      IT Ticketing System
     </v-toolbar-title>
 
     <v-spacer />
@@ -49,39 +28,6 @@
     />
 
     <v-spacer />
-
-    <!-- Dark mode toggle -->
-    <v-btn icon @click="themeStore.toggleDark()" class="mr-2">
-      <v-icon>{{ themeStore.isDark ? 'mdi-weather-sunny' : 'mdi-weather-night' }}</v-icon>
-      <v-tooltip activator="parent" location="bottom">
-        {{ themeStore.isDark ? 'Light mode' : 'Dark mode' }}
-      </v-tooltip>
-    </v-btn>
-
-    <!-- Admin: Toggle portal view -->
-    <v-btn
-      v-if="authStore.isAdmin && !authStore.viewingAsCustomer"
-      icon
-      @click="authStore.toggleCustomerView()"
-      class="mr-2"
-    >
-      <v-icon>mdi-account-switch</v-icon>
-      <v-tooltip activator="parent" location="bottom">
-        View as Customer
-      </v-tooltip>
-    </v-btn>
-    <v-btn
-      v-else-if="authStore.viewingAsCustomer"
-      icon
-      @click="authStore.toggleCustomerView()"
-      class="mr-2"
-      color="warning"
-    >
-      <v-icon>mdi-account-switch</v-icon>
-      <v-tooltip activator="parent" location="bottom">
-        Back to Agent View
-      </v-tooltip>
-    </v-btn>
 
     <!-- Notifications -->
     <v-menu offset-y>
@@ -141,16 +87,11 @@
             {{ authStore.fullName }}
           </v-list-item-title>
           <v-list-item-subtitle>{{ authStore.user?.email }}</v-list-item-subtitle>
-          <v-list-item-subtitle class="text-caption mt-1">
-            <v-chip size="x-small" :color="authStore.isAdmin ? 'error' : authStore.isAgent ? 'primary' : 'success'">
-              {{ authStore.isAdmin ? 'Admin' : authStore.isAgent ? 'Agent' : 'Customer' }}
-            </v-chip>
-          </v-list-item-subtitle>
         </v-list-item>
 
         <v-divider />
 
-        <v-list-item :to="authStore.isCustomer ? { name: 'CustomerProfile' } : { name: 'Profile' }">
+        <v-list-item :to="{ name: 'Profile' }">
           <template v-slot:prepend>
             <v-icon>mdi-account</v-icon>
           </template>
@@ -169,41 +110,42 @@
 </template>
 
 <script setup>
-import { ref, computed } from "vue"
-import { useRouter } from "vue-router"
-import { useAuthStore } from "@/stores/auth"
-import { useThemeStore } from "@/stores/theme"
-import { getInitials, formatRelativeTime } from "@/utils/helpers"
+import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import { getInitials, formatRelativeTime } from '@/utils/helpers'
 
-const emit = defineEmits(["toggle-drawer"])
+const emit = defineEmits(['toggle-drawer'])
 const router = useRouter()
 const authStore = useAuthStore()
-const themeStore = useThemeStore()
 
 // State
-const search = ref("")
-const notifications = ref([])
+const search = ref('')
+const notifications = ref([
+  // Mock notifications - replace with real data
+])
 const unreadNotifications = computed(() => notifications.value.length)
 
 // Computed
 const userInitials = computed(() => {
-  return getInitials(authStore.user?.firstName, authStore.user?.lastName)
+  return getInitials(authStore.user?.fullname || authStore.user?.username)
 })
 
 // Methods
 function handleSearch() {
   if (search.value.trim()) {
-    router.push({ name: "Tickets", query: { search: search.value } })
+    router.push({ name: 'Tickets', query: { search: search.value } })
   }
 }
 
 function handleNotificationClick(notification) {
   // Handle notification click
+  console.log('Notification clicked:', notification)
 }
 
 function handleLogout() {
   authStore.logout()
-  router.push({ name: "Login" })
+  router.push({ name: 'Login' })
 }
 </script>
 
