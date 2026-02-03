@@ -138,13 +138,14 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { useQuery } from '@vue/apollo-composable'
-import { useAuthStore } from '@/stores/auth'
-import gql from 'graphql-tag'
-import { format, formatDistanceToNow } from 'date-fns'
-import VerseOfTheDay from '@/components/common/VerseOfTheDay.vue'
+import { computed } from "vue"
+import { useRouter } from "vue-router"
+import { useQuery, useSubscription } from "@vue/apollo-composable"
+import { useAuthStore } from "@/stores/auth"
+import { NEW_TICKET_SUBSCRIPTION } from "@/graphql/subscriptions"
+import gql from "graphql-tag"
+import { format, formatDistanceToNow } from "date-fns"
+import VerseOfTheDay from "@/components/common/VerseOfTheDay.vue"
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -177,8 +178,26 @@ const CUSTOMER_DASHBOARD = gql`
   }
 `
 
-const { result, loading, error } = useQuery(CUSTOMER_DASHBOARD)
+const { result, loading, error, refetch } = useQuery(CUSTOMER_DASHBOARD)
 const dashboard = computed(() => result.value?.customerDashboard)
+
+// Subscribe to new tickets for real-time updates on dashboard
+const { onResult: onNewTicket } = useSubscription(NEW_TICKET_SUBSCRIPTION)
+onNewTicket((subscriptionResult) => {
+  if (subscriptionResult.data?.newTicket) {
+    const newTicket = subscriptionResult.data.newTicket
+    console.log("[CustomerDashboard] New ticket received:", newTicket.ticketNumber)
+    
+    // Check if this ticket belongs to current user
+    const currentUserId = authStore.user?.id
+    if (newTicket.createdBy?.id === currentUserId) {
+      console.log("[CustomerDashboard] Ticket is mine, refetching dashboard...")
+      refetch()
+    } else {
+      console.log("[CustomerDashboard] Ticket belongs to another user, ignoring")
+    }
+  }
+})
 
 const formatDate = (date) => {
   try {
@@ -190,38 +209,38 @@ const formatDate = (date) => {
 
 const getStatusColor = (status) => {
   const colors = {
-    OPEN: 'success',
-    IN_PROGRESS: 'info',
-    PENDING: 'warning',
-    RESOLVED: 'primary',
-    CLOSED: 'grey'
+    OPEN: "success",
+    IN_PROGRESS: "info",
+    PENDING: "warning",
+    RESOLVED: "primary",
+    CLOSED: "grey"
   }
-  return colors[status] || 'grey'
+  return colors[status] || "grey"
 }
 
 const getStatusIcon = (status) => {
   const icons = {
-    OPEN: 'mdi-circle',
-    IN_PROGRESS: 'mdi-progress-clock',
-    PENDING: 'mdi-pause-circle',
-    RESOLVED: 'mdi-check-circle',
-    CLOSED: 'mdi-close-circle'
+    OPEN: "mdi-circle",
+    IN_PROGRESS: "mdi-progress-clock",
+    PENDING: "mdi-pause-circle",
+    RESOLVED: "mdi-check-circle",
+    CLOSED: "mdi-close-circle"
   }
-  return icons[status] || 'mdi-circle'
+  return icons[status] || "mdi-circle"
 }
 
 const getPriorityColor = (priority) => {
   const colors = {
-    LOW: 'grey',
-    MEDIUM: 'info',
-    HIGH: 'warning',
-    URGENT: 'error'
+    LOW: "grey",
+    MEDIUM: "info",
+    HIGH: "warning",
+    URGENT: "error"
   }
-  return colors[priority] || 'grey'
+  return colors[priority] || "grey"
 }
 
 const viewArticle = (id) => {
-  router.push(`/portal/knowledge-base?article=${id}`)
+  router.push(`/portal/knowledge-base?article=\${id}`)
 }
 </script>
 

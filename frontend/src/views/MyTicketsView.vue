@@ -74,26 +74,47 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { useQuery, useSubscription } from '@vue/apollo-composable'
+import { computed, watch } from "vue"
+import { useQuery, useSubscription } from "@vue/apollo-composable"
 import { NEW_TICKET_SUBSCRIPTION } from "@/graphql/subscriptions"
-import { GET_MY_TICKETS } from '@/graphql/queries'
-import StatsCard from '@/components/common/StatsCard.vue'
-import TicketCard from '@/components/tickets/TicketCard.vue'
+import { GET_MY_TICKETS } from "@/graphql/queries"
+import { useAuthStore } from "@/stores/auth"
+import StatsCard from "@/components/common/StatsCard.vue"
+import TicketCard from "@/components/tickets/TicketCard.vue"
 
-const { result, loading } = useQuery(GET_MY_TICKETS)
+const authStore = useAuthStore()
+
+const { result, loading, refetch } = useQuery(GET_MY_TICKETS)
 
 const myTickets = computed(() => result.value?.myTickets || [])
 
 const openCount = computed(() =>
-  myTickets.value.filter(t => t.status === 'OPEN').length
+  myTickets.value.filter(t => t.status === "OPEN").length
 )
 
 const inProgressCount = computed(() =>
-  myTickets.value.filter(t => t.status === 'IN_PROGRESS').length
+  myTickets.value.filter(t => t.status === "IN_PROGRESS").length
 )
 
 const resolvedCount = computed(() =>
-  myTickets.value.filter(t => t.status === 'RESOLVED').length
+  myTickets.value.filter(t => t.status === "RESOLVED").length
 )
+
+// Subscribe to new tickets for real-time updates
+const { onResult: onNewTicket } = useSubscription(NEW_TICKET_SUBSCRIPTION)
+onNewTicket((subscriptionResult) => {
+  if (subscriptionResult.data?.newTicket) {
+    const newTicket = subscriptionResult.data.newTicket
+    console.log("[MyTicketsView] New ticket received:", newTicket.ticketNumber)
+    
+    // Check if this ticket belongs to current user
+    const currentUserId = authStore.user?.id
+    if (newTicket.createdBy?.id === currentUserId) {
+      console.log("[MyTicketsView] Ticket is mine, refetching list...")
+      refetch()
+    } else {
+      console.log("[MyTicketsView] Ticket belongs to another user, ignoring")
+    }
+  }
+})
 </script>
