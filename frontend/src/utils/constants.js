@@ -45,28 +45,34 @@ export const TICKET_PRIORITY_COLORS = {
   URGENT: 'red',
 }
 
-// Ticket Category
+// Ticket Category - TM Consulting specific categories
 export const TICKET_CATEGORY = {
-  HARDWARE: 'HARDWARE',
-  SOFTWARE: 'SOFTWARE',
-  NETWORK: 'NETWORK',
-  ACCESS: 'ACCESS',
-  OTHER: 'OTHER',
+  HARDWARE: 'HARDWARE',      // Printer, Scanner, F/S Drive, Flash drive
+  SOFTWARE: 'SOFTWARE',      // General software issues
+  BOOKKEEPING: 'BOOKKEEPING', // GL, Misc Receipts, Mortgage Tax, Official Depository, Warrants
+  TAX: 'TAX',                // Tax Inquiry, Payments, Adjustments, Mortgage Co, Delinquent Tax
+  BUG_REPORT: 'BUG_REPORT',  // Bug reports - quick access
+  BILLING: 'BILLING',        // Billing questions
+  OTHER: 'OTHER',            // Miscellaneous
 }
 
 export const TICKET_CATEGORY_LABELS = {
   HARDWARE: 'Hardware',
   SOFTWARE: 'Software',
-  NETWORK: 'Network',
-  ACCESS: 'Access & Permissions',
+  BOOKKEEPING: 'Bookkeeping',
+  TAX: 'Tax',
+  BUG_REPORT: 'Bug Report',
+  BILLING: 'Billing Questions',
   OTHER: 'Other',
 }
 
 export const TICKET_CATEGORY_ICONS = {
   HARDWARE: 'mdi-desktop-tower',
   SOFTWARE: 'mdi-application',
-  NETWORK: 'mdi-lan',
-  ACCESS: 'mdi-key',
+  BOOKKEEPING: 'mdi-book-open-variant',
+  TAX: 'mdi-file-document-outline',
+  BUG_REPORT: 'mdi-bug',
+  BILLING: 'mdi-receipt-text',
   OTHER: 'mdi-dots-horizontal',
 }
 

@@ -1,22 +1,23 @@
 import { registerEnumType } from '@nestjs/graphql';
 
-// Legacy enum - kept for backwards compatibility
-// New tickets should use the dynamic TicketCategory entity
-export enum TicketCategoryEnum {
+export enum TicketCategory {
+  // Hardware - covers Printer, Scanner, F/S Drive, Flash drive
   HARDWARE = 'HARDWARE',
+  // General Software issues
   SOFTWARE = 'SOFTWARE',
-  NETWORK = 'NETWORK',
-  ACCESS = 'ACCESS',
-  EMAIL = 'EMAIL',
-  PRINTER = 'PRINTER',
-  PHONE = 'PHONE',
+  // Forte/RenewGov accounting software (TM Consulting specific)
+  FORTE = 'FORTE',
+  // Accounting/Financial Support
+  ACCOUNTING = 'ACCOUNTING',
+  // Bug Report - top level for quick access
+  BUG_REPORT = 'BUG_REPORT',
+  // Billing Questions
+  BILLING = 'BILLING',
+  // Other/Miscellaneous
   OTHER = 'OTHER',
 }
 
-registerEnumType(TicketCategoryEnum, {
-  name: 'TicketCategoryEnum',
-  description: 'Legacy category enum (deprecated - use dynamic categories)',
+registerEnumType(TicketCategory, {
+  name: 'TicketCategory',
+  description: 'Category of a ticket',
 });
-
-// Re-export as TicketCategory for backwards compatibility
-export { TicketCategoryEnum as TicketCategory };
