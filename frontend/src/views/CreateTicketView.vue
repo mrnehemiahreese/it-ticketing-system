@@ -64,19 +64,19 @@
                     </v-select>
                   </v-col>
 
-                  <!-- Category (Parent) -->
+                  <!-- Category (Level 1) -->
                   <v-col cols="12" md="6">
                     <v-select
-                      v-model="selectedParentCategory"
+                      v-model="selectedLevel1"
                       label="Category"
-                      :items="parentCategories"
+                      :items="level1Categories"
                       item-title="name"
                       item-value="id"
                       :rules="[rules.required]"
                       variant="outlined"
                       density="comfortable"
                       :loading="categoriesLoading"
-                      @update:model-value="handleParentCategoryChange"
+                      @update:model-value="handleLevel1Change"
                     >
                       <template v-slot:item="{ props, item }">
                         <v-list-item v-bind="props">
@@ -93,25 +93,50 @@
                   </v-col>
                 </v-row>
 
-                <!-- Sub-Category (if parent has children) -->
-                <v-row v-if="subCategories.length > 0">
+                <!-- Sub-Category (Level 2) -->
+                <v-row v-if="level2Categories.length > 0">
                   <v-col cols="12" md="6" offset-md="6">
                     <v-select
-                      v-model="formData.categoryId"
+                      v-model="selectedLevel2"
                       label="Sub-Category"
-                      :items="subCategories"
+                      :items="level2Categories"
                       item-title="name"
                       item-value="id"
                       variant="outlined"
                       density="comfortable"
                       clearable
-                      hint="Optional: Select a more specific category"
-                      persistent-hint
+                      @update:model-value="handleLevel2Change"
                     >
                       <template v-slot:item="{ props, item }">
                         <v-list-item v-bind="props">
                           <template v-slot:prepend>
                             <v-icon size="small" :color="item.raw.color">{{ item.raw.icon || 'mdi-folder-outline' }}</v-icon>
+                          </template>
+                        </v-list-item>
+                      </template>
+                    </v-select>
+                  </v-col>
+                </v-row>
+
+                <!-- Sub-Sub-Category (Level 3) -->
+                <v-row v-if="level3Categories.length > 0">
+                  <v-col cols="12" md="6" offset-md="6">
+                    <v-select
+                      v-model="formData.categoryId"
+                      label="Specific Issue"
+                      :items="level3Categories"
+                      item-title="name"
+                      item-value="id"
+                      variant="outlined"
+                      density="comfortable"
+                      clearable
+                      hint="Optional: Select the specific issue type"
+                      persistent-hint
+                    >
+                      <template v-slot:item="{ props, item }">
+                        <v-list-item v-bind="props">
+                          <template v-slot:prepend>
+                            <v-icon size="small" :color="item.raw.color">{{ item.raw.icon || 'mdi-circle-small' }}</v-icon>
                           </template>
                         </v-list-item>
                       </template>
@@ -179,16 +204,14 @@
                     Provide a clear, concise title
                   </v-list-item-title>
                 </v-list-item>
-
                 <v-list-item>
                   <template v-slot:prepend>
                     <v-icon size="small">mdi-check</v-icon>
                   </template>
                   <v-list-item-title class="text-caption">
-                    Include detailed steps to reproduce the issue
+                    Include detailed steps to reproduce
                   </v-list-item-title>
                 </v-list-item>
-
                 <v-list-item>
                   <template v-slot:prepend>
                     <v-icon size="small">mdi-check</v-icon>
@@ -197,22 +220,12 @@
                     Attach screenshots or error messages
                   </v-list-item-title>
                 </v-list-item>
-
                 <v-list-item>
                   <template v-slot:prepend>
                     <v-icon size="small">mdi-check</v-icon>
                   </template>
                   <v-list-item-title class="text-caption">
-                    Select appropriate priority and category
-                  </v-list-item-title>
-                </v-list-item>
-
-                <v-list-item>
-                  <template v-slot:prepend>
-                    <v-icon size="small">mdi-check</v-icon>
-                  </template>
-                  <v-list-item-title class="text-caption">
-                    Include workstation/device information
+                    Select appropriate category
                   </v-list-item-title>
                 </v-list-item>
               </v-list>
@@ -228,48 +241,29 @@
                   <template v-slot:prepend>
                     <v-icon color="red">mdi-fire</v-icon>
                   </template>
-                  <v-list-item-title class="text-caption font-weight-bold">
-                    Urgent
-                  </v-list-item-title>
-                  <v-list-item-subtitle class="text-caption">
-                    Critical system down
-                  </v-list-item-subtitle>
+                  <v-list-item-title class="text-caption font-weight-bold">Urgent</v-list-item-title>
+                  <v-list-item-subtitle class="text-caption">Critical system down</v-list-item-subtitle>
                 </v-list-item>
-
                 <v-list-item>
                   <template v-slot:prepend>
                     <v-icon color="orange">mdi-chevron-up</v-icon>
                   </template>
-                  <v-list-item-title class="text-caption font-weight-bold">
-                    High
-                  </v-list-item-title>
-                  <v-list-item-subtitle class="text-caption">
-                    Major functionality impaired
-                  </v-list-item-subtitle>
+                  <v-list-item-title class="text-caption font-weight-bold">High</v-list-item-title>
+                  <v-list-item-subtitle class="text-caption">Major functionality impaired</v-list-item-subtitle>
                 </v-list-item>
-
                 <v-list-item>
                   <template v-slot:prepend>
                     <v-icon color="blue">mdi-minus</v-icon>
                   </template>
-                  <v-list-item-title class="text-caption font-weight-bold">
-                    Medium
-                  </v-list-item-title>
-                  <v-list-item-subtitle class="text-caption">
-                    Minor issues, workaround available
-                  </v-list-item-subtitle>
+                  <v-list-item-title class="text-caption font-weight-bold">Medium</v-list-item-title>
+                  <v-list-item-subtitle class="text-caption">Minor issues</v-list-item-subtitle>
                 </v-list-item>
-
                 <v-list-item>
                   <template v-slot:prepend>
                     <v-icon color="grey">mdi-chevron-down</v-icon>
                   </template>
-                  <v-list-item-title class="text-caption font-weight-bold">
-                    Low
-                  </v-list-item-title>
-                  <v-list-item-subtitle class="text-caption">
-                    Questions, minor requests
-                  </v-list-item-subtitle>
+                  <v-list-item-title class="text-caption font-weight-bold">Low</v-list-item-title>
+                  <v-list-item-subtitle class="text-caption">Questions, minor requests</v-list-item-subtitle>
                 </v-list-item>
               </v-list>
             </v-card-text>
@@ -280,7 +274,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMutation, useQuery } from '@vue/apollo-composable'
 import { useNotificationStore } from '@/stores/notification'
@@ -292,7 +286,7 @@ import { getUploadUrl } from '@/utils/api'
 import AttachmentUpload from '@/components/common/AttachmentUpload.vue'
 import gql from 'graphql-tag'
 
-// GraphQL query for categories
+// GraphQL query for categories - 3 levels deep
 const GET_CATEGORY_TREE = gql`
   query GetCategoryTree {
     categoryTree {
@@ -308,6 +302,13 @@ const GET_CATEGORY_TREE = gql`
         icon
         color
         isActive
+        children {
+          id
+          name
+          icon
+          color
+          isActive
+        }
       }
     }
   }
@@ -320,14 +321,17 @@ const authStore = useAuthStore()
 const formRef = ref(null)
 const loading = ref(false)
 const attachments = ref([])
-const selectedParentCategory = ref(null)
+
+// Category selection state (3 levels)
+const selectedLevel1 = ref(null)
+const selectedLevel2 = ref(null)
 
 const formData = ref({
   title: '',
   description: '',
   priority: 'MEDIUM',
   categoryId: null,
-  workstationNumber: ''
+  workstation: ''
 })
 
 const rules = VALIDATION_RULES
@@ -343,37 +347,63 @@ const priorityOptions = Object.keys(TICKET_PRIORITY).map(key => ({
 // Fetch categories from API
 const { result: categoriesResult, loading: categoriesLoading } = useQuery(GET_CATEGORY_TREE)
 
-// Parent categories (top-level, active only)
-const parentCategories = computed(() => {
+// Level 1 categories (top-level, active only)
+const level1Categories = computed(() => {
   if (!categoriesResult.value?.categoryTree) return []
   return categoriesResult.value.categoryTree.filter(c => c.isActive)
 })
 
-// Sub-categories based on selected parent
-const subCategories = computed(() => {
-  if (!selectedParentCategory.value || !categoriesResult.value?.categoryTree) return []
-  const parent = categoriesResult.value.categoryTree.find(c => c.id === selectedParentCategory.value)
+// Level 2 categories (children of selected level 1)
+const level2Categories = computed(() => {
+  if (!selectedLevel1.value || !categoriesResult.value?.categoryTree) return []
+  const parent = categoriesResult.value.categoryTree.find(c => c.id === selectedLevel1.value)
   if (!parent?.children) return []
   return parent.children.filter(c => c.isActive)
 })
 
-// Handle parent category change
-function handleParentCategoryChange(parentId) {
-  // Reset sub-category when parent changes
+// Level 3 categories (children of selected level 2)
+const level3Categories = computed(() => {
+  if (!selectedLevel2.value || !categoriesResult.value?.categoryTree) return []
+  const level1 = categoriesResult.value.categoryTree.find(c => c.id === selectedLevel1.value)
+  if (!level1?.children) return []
+  const level2 = level1.children.find(c => c.id === selectedLevel2.value)
+  if (!level2?.children) return []
+  return level2.children.filter(c => c.isActive)
+})
+
+// Handle level 1 category change
+function handleLevel1Change(id) {
+  selectedLevel2.value = null
   formData.value.categoryId = null
-  // If parent has no children, use the parent ID as the categoryId
-  if (parentId) {
-    const parent = categoriesResult.value?.categoryTree?.find(c => c.id === parentId)
-    if (!parent?.children?.length) {
-      formData.value.categoryId = parentId
+  
+  // If no children, use this as final category
+  if (id) {
+    const cat = categoriesResult.value?.categoryTree?.find(c => c.id === id)
+    if (!cat?.children?.length) {
+      formData.value.categoryId = id
     }
   }
 }
 
-// Watch for sub-category selection, if none selected use parent
-watch(() => formData.value.categoryId, (newVal) => {
-  // categoryId is already set correctly
-}, { immediate: true })
+// Handle level 2 category change
+function handleLevel2Change(id) {
+  formData.value.categoryId = null
+  
+  // If no children, use this as final category
+  if (id) {
+    const level1 = categoriesResult.value?.categoryTree?.find(c => c.id === selectedLevel1.value)
+    const cat = level1?.children?.find(c => c.id === id)
+    if (!cat?.children?.length) {
+      formData.value.categoryId = id
+    }
+  } else if (selectedLevel1.value) {
+    // If cleared, check if level1 has no other children
+    const level1 = categoriesResult.value?.categoryTree?.find(c => c.id === selectedLevel1.value)
+    if (!level1?.children?.length) {
+      formData.value.categoryId = selectedLevel1.value
+    }
+  }
+}
 
 // GraphQL mutation
 const { mutate: createTicket } = useMutation(CREATE_TICKET)
@@ -386,8 +416,8 @@ async function handleSubmit() {
   const { valid } = await formRef.value.validate()
   if (!valid) return
 
-  // Ensure we have a category selected
-  const finalCategoryId = formData.value.categoryId || selectedParentCategory.value
+  // Determine final category: prefer most specific selected
+  const finalCategoryId = formData.value.categoryId || selectedLevel2.value || selectedLevel1.value
   if (!finalCategoryId) {
     notificationStore.error('Please select a category')
     return
@@ -428,8 +458,7 @@ async function handleSubmit() {
             })
             
             if (!uploadResponse.ok) {
-              const errorText = await uploadResponse.text()
-              console.error('Upload failed for', file.name, 'Error:', errorText)
+              console.error('Upload failed for', file.name)
               notificationStore.warning(`Failed to upload ${file.name}`)
             }
           } catch (uploadErr) {

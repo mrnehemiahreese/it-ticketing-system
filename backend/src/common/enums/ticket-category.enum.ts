@@ -18,6 +18,6 @@ export enum TicketCategory {
 }
 
 registerEnumType(TicketCategory, {
-  name: 'TicketCategory',
+  name: 'TicketCategoryEnum',
   description: 'Category of a ticket',
 });

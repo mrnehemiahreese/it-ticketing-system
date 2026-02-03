@@ -6,7 +6,7 @@
           <div>
             <h1 class="text-h4 mb-1">Category Manager</h1>
             <p class="text-body-2 text-medium-emphasis">
-              Manage ticket categories and sub-categories
+              Manage ticket categories and sub-categories (3 levels supported)
             </p>
           </div>
           <v-btn
@@ -43,12 +43,12 @@
           <v-card-text class="pa-0">
             <v-list density="compact">
               <template v-for="parent in categoryTree" :key="parent.id">
-                <!-- Parent Category -->
-                <v-list-item class="category-parent">
+                <!-- Level 1: Parent Category -->
+                <v-list-item class="category-level-1">
                   <template #prepend>
-                    <v-icon :icon="parent.icon" :color="parent.color" />
+                    <v-icon :icon="parent.icon || 'mdi-folder'" :color="parent.color" />
                   </template>
-                  <v-list-item-title class="font-weight-medium">
+                  <v-list-item-title class="font-weight-bold">
                     {{ parent.name }}
                     <v-chip v-if="!parent.isActive" size="x-small" color="warning" class="ml-2">
                       Inactive
@@ -87,40 +87,85 @@
                   </template>
                 </v-list-item>
 
-                <!-- Child Categories -->
+                <!-- Level 2: Child Categories -->
                 <template v-if="parent.children?.length">
-                  <v-list-item
-                    v-for="child in parent.children"
-                    :key="child.id"
-                    class="category-child pl-12"
-                  >
-                    <template #prepend>
-                      <v-icon :icon="child.icon" size="small" :color="child.color || parent.color" />
+                  <template v-for="child in parent.children" :key="child.id">
+                    <v-list-item class="category-level-2">
+                      <template #prepend>
+                        <v-icon :icon="child.icon || 'mdi-folder-outline'" size="small" :color="child.color || parent.color" />
+                      </template>
+                      <v-list-item-title class="font-weight-medium">
+                        {{ child.name }}
+                        <v-chip v-if="!child.isActive" size="x-small" color="warning" class="ml-2">
+                          Inactive
+                        </v-chip>
+                      </v-list-item-title>
+                      <template #append>
+                        <v-chip v-if="child.children?.length" size="x-small" class="mr-2" variant="outlined">
+                          {{ child.children.length }} items
+                        </v-chip>
+                        <v-btn
+                          icon="mdi-plus"
+                          size="x-small"
+                          variant="text"
+                          color="success"
+                          @click="openCreateDialog(child.id)"
+                          title="Add Sub-Item"
+                        />
+                        <v-btn
+                          icon="mdi-pencil"
+                          size="x-small"
+                          variant="text"
+                          @click="openEditDialog(child)"
+                          title="Edit"
+                        />
+                        <v-btn
+                          icon="mdi-delete"
+                          size="x-small"
+                          variant="text"
+                          color="error"
+                          @click="confirmDelete(child)"
+                          title="Delete"
+                        />
+                      </template>
+                    </v-list-item>
+
+                    <!-- Level 3: Grandchild Categories -->
+                    <template v-if="child.children?.length">
+                      <v-list-item
+                        v-for="grandchild in child.children"
+                        :key="grandchild.id"
+                        class="category-level-3"
+                      >
+                        <template #prepend>
+                          <v-icon :icon="grandchild.icon || 'mdi-circle-small'" size="x-small" :color="grandchild.color || child.color || parent.color" />
+                        </template>
+                        <v-list-item-title class="text-body-2">
+                          {{ grandchild.name }}
+                          <v-chip v-if="!grandchild.isActive" size="x-small" color="warning" class="ml-2">
+                            Inactive
+                          </v-chip>
+                        </v-list-item-title>
+                        <template #append>
+                          <v-btn
+                            icon="mdi-pencil"
+                            size="x-small"
+                            variant="text"
+                            @click="openEditDialog(grandchild)"
+                            title="Edit"
+                          />
+                          <v-btn
+                            icon="mdi-delete"
+                            size="x-small"
+                            variant="text"
+                            color="error"
+                            @click="confirmDelete(grandchild)"
+                            title="Delete"
+                          />
+                        </template>
+                      </v-list-item>
                     </template>
-                    <v-list-item-title>
-                      {{ child.name }}
-                      <v-chip v-if="!child.isActive" size="x-small" color="warning" class="ml-2">
-                        Inactive
-                      </v-chip>
-                    </v-list-item-title>
-                    <template #append>
-                      <v-btn
-                        icon="mdi-pencil"
-                        size="x-small"
-                        variant="text"
-                        @click="openEditDialog(child)"
-                        title="Edit"
-                      />
-                      <v-btn
-                        icon="mdi-delete"
-                        size="x-small"
-                        variant="text"
-                        color="error"
-                        @click="confirmDelete(child)"
-                        title="Delete"
-                      />
-                    </template>
-                  </v-list-item>
+                  </template>
                 </template>
 
                 <v-divider v-if="categoryTree.indexOf(parent) < categoryTree.length - 1" />
@@ -147,7 +192,7 @@
                 <template #prepend>
                   <v-icon color="primary">mdi-folder</v-icon>
                 </template>
-                <v-list-item-title>Parent Categories</v-list-item-title>
+                <v-list-item-title>Level 1 Categories</v-list-item-title>
                 <template #append>
                   <strong>{{ categoryTree.length }}</strong>
                 </template>
@@ -156,9 +201,18 @@
                 <template #prepend>
                   <v-icon color="info">mdi-folder-open</v-icon>
                 </template>
-                <v-list-item-title>Sub-Categories</v-list-item-title>
+                <v-list-item-title>Level 2 Sub-Categories</v-list-item-title>
                 <template #append>
-                  <strong>{{ totalSubCategories }}</strong>
+                  <strong>{{ totalLevel2 }}</strong>
+                </template>
+              </v-list-item>
+              <v-list-item>
+                <template #prepend>
+                  <v-icon color="secondary">mdi-file-document-outline</v-icon>
+                </template>
+                <v-list-item-title>Level 3 Items</v-list-item-title>
+                <template #append>
+                  <strong>{{ totalLevel3 }}</strong>
                 </template>
               </v-list-item>
               <v-list-item>
@@ -181,9 +235,10 @@
           </v-card-title>
           <v-card-text class="text-body-2">
             <ul class="pl-4">
+              <li>3-level hierarchy: Category &gt; Sub-Category &gt; Item</li>
               <li>Use icons from Material Design Icons</li>
               <li>Colors should be hex codes (e.g., #1976D2)</li>
-              <li>Inactive categories will be hidden from ticket forms</li>
+              <li>Inactive categories are hidden from ticket forms</li>
               <li>Deleting a parent moves its children to root</li>
             </ul>
           </v-card-text>
@@ -222,7 +277,7 @@
             <v-select
               v-model="form.parentId"
               :items="parentOptions"
-              item-title="name"
+              item-title="displayName"
               item-value="id"
               label="Parent Category (optional)"
               variant="outlined"
@@ -233,7 +288,7 @@
               <template #item="{ item, props: itemProps }">
                 <v-list-item v-bind="itemProps">
                   <template #prepend>
-                    <v-icon :icon="item.raw.icon" size="small" />
+                    <v-icon :icon="item.raw.icon" size="small" :class="{ 'ml-4': item.raw.level === 2 }" />
                   </template>
                 </v-list-item>
               </template>
@@ -341,7 +396,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useQuery, useMutation } from '@vue/apollo-composable'
 import gql from 'graphql-tag'
 
-// GraphQL Queries & Mutations
+// GraphQL Queries & Mutations - Now fetches 3 levels
 const GET_CATEGORY_TREE = gql`
   query GetCategoryTree {
     categoryTree {
@@ -362,6 +417,16 @@ const GET_CATEGORY_TREE = gql`
         sortOrder
         isActive
         parentId
+        children {
+          id
+          name
+          description
+          icon
+          color
+          sortOrder
+          isActive
+          parentId
+        }
       }
     }
   }
@@ -433,25 +498,68 @@ const totalCategories = computed(() => {
   let count = categoryTree.value.length
   categoryTree.value.forEach(cat => {
     count += cat.children?.length || 0
+    cat.children?.forEach(child => {
+      count += child.children?.length || 0
+    })
   })
   return count
 })
 
-const totalSubCategories = computed(() => {
+const totalLevel2 = computed(() => {
   return categoryTree.value.reduce((sum, cat) => sum + (cat.children?.length || 0), 0)
+})
+
+const totalLevel3 = computed(() => {
+  let count = 0
+  categoryTree.value.forEach(cat => {
+    cat.children?.forEach(child => {
+      count += child.children?.length || 0
+    })
+  })
+  return count
 })
 
 const inactiveCount = computed(() => {
   let count = categoryTree.value.filter(c => !c.isActive).length
   categoryTree.value.forEach(cat => {
     count += (cat.children || []).filter(c => !c.isActive).length
+    cat.children?.forEach(child => {
+      count += (child.children || []).filter(c => !c.isActive).length
+    })
   })
   return count
 })
 
+// Parent options now includes level 1 and level 2 categories (for creating level 2 and level 3)
 const parentOptions = computed(() => {
   const excluded = editingCategory.value ? [editingCategory.value.id] : []
-  return categoryTree.value.filter(c => !excluded.includes(c.id))
+  const options = []
+
+  categoryTree.value.forEach(cat => {
+    if (!excluded.includes(cat.id)) {
+      options.push({
+        id: cat.id,
+        name: cat.name,
+        displayName: cat.name,
+        icon: cat.icon || 'mdi-folder',
+        level: 1
+      })
+    }
+    // Add level 2 categories as potential parents (for level 3 items)
+    cat.children?.forEach(child => {
+      if (!excluded.includes(child.id)) {
+        options.push({
+          id: child.id,
+          name: child.name,
+          displayName: `${cat.name} > ${child.name}`,
+          icon: child.icon || 'mdi-folder-outline',
+          level: 2
+        })
+      }
+    })
+  })
+
+  return options
 })
 
 // Queries
@@ -472,12 +580,32 @@ const { mutate: deleteCategoryMutation } = useMutation(DELETE_CATEGORY)
 // Methods
 const openCreateDialog = (parentId = null) => {
   editingCategory.value = null
+
+  // Find parent to inherit color
+  let parentColor = '#1976D2'
+  if (parentId) {
+    // Check level 1
+    const level1 = categoryTree.value.find(c => c.id === parentId)
+    if (level1) {
+      parentColor = level1.color || parentColor
+    } else {
+      // Check level 2
+      for (const cat of categoryTree.value) {
+        const level2 = cat.children?.find(c => c.id === parentId)
+        if (level2) {
+          parentColor = level2.color || cat.color || parentColor
+          break
+        }
+      }
+    }
+  }
+
   form.value = {
     name: '',
     description: '',
     parentId,
     icon: 'mdi-folder',
-    color: parentId ? categoryTree.value.find(c => c.id === parentId)?.color || '#1976D2' : '#1976D2',
+    color: parentColor,
     sortOrder: 1,
     isActive: true
   }
@@ -506,7 +634,7 @@ const closeDialog = () => {
 
 const saveCategory = async () => {
   if (!formValid.value) return
-  
+
   saving.value = true
   try {
     const input = {
@@ -544,7 +672,7 @@ const confirmDelete = (category) => {
 
 const deleteCategory = async () => {
   if (!categoryToDelete.value) return
-  
+
   deleting.value = true
   try {
     await deleteCategoryMutation({ id: categoryToDelete.value.id })
@@ -572,11 +700,16 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.category-parent {
+.category-level-1 {
   background-color: rgba(var(--v-theme-surface-variant), 0.4);
 }
-.category-child {
-  border-left: 2px solid rgba(var(--v-theme-primary), 0.3);
+.category-level-2 {
+  border-left: 3px solid rgba(var(--v-theme-primary), 0.4);
   margin-left: 24px;
+  background-color: rgba(var(--v-theme-surface-variant), 0.2);
+}
+.category-level-3 {
+  border-left: 2px solid rgba(var(--v-theme-secondary), 0.3);
+  margin-left: 48px;
 }
 </style>

@@ -233,3 +233,19 @@ export const GET_TECHNICIANS = gql`
     }
   }
 `
+
+// Analytics queries
+export const GET_ANALYTICS_OVERVIEW = gql`
+  query GetAnalyticsOverview {
+    dashboardStats {
+      totalTickets
+      openTickets
+      inProgressTickets
+      resolvedTickets
+      closedTickets
+      avgResolutionTime
+      ticketsCreatedToday
+      ticketsResolvedToday
+    }
+  }
+`

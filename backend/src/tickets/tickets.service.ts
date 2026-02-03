@@ -40,23 +40,21 @@ export class TicketsService {
     const savedTicket = await this.ticketsRepository.save(ticket);
     const fullTicket = await this.findOne(savedTicket.id, null);
 
-    // Notify Slack about new ticket and store thread_ts
-    const threadTs = await this.slackService.notifyTicketCreated(fullTicket).catch(err => {
+    // Background: Slack notification and store thread_ts
+    this.slackService.notifyTicketCreated(fullTicket).then(threadTs => {
+      if (threadTs) {
+        this.ticketsRepository.update(fullTicket.id, { slackThreadTs: threadTs }).catch(err => {
+          console.error('Failed to save Slack thread timestamp:', err);
+        });
+      }
+    }).catch(err => {
       console.error('Failed to notify Slack of ticket creation:', err);
-      return null;
     });
 
-    // Store the Slack thread timestamp for future replies
-    if (threadTs) {
-      fullTicket.slackThreadTs = threadTs;
-      await this.ticketsRepository.save(fullTicket);
-    }
-
-    // Send email notification to the ticket creator
-    const creator = fullTicket.createdBy || await this.usersRepository.findOne({ where: { id: userId } });
-    if (creator) {
-      await this.emailService.sendTicketCreatedNotification(fullTicket, creator).catch(err => {
-        console.error("Failed to send ticket created email:", err);
+    // Background: Email notification to the ticket creator
+    if (fullTicket.createdBy) {
+      this.emailService.sendTicketCreatedNotification(fullTicket, fullTicket.createdBy).catch(err => {
+        console.error('Failed to send ticket created email:', err);
       });
     }
 
@@ -194,21 +192,21 @@ export class TicketsService {
     if (previousAssignedTo !== updateTicketInput.assignedToId) changes.assignedTo = { from: previousAssignedTo, to: updateTicketInput.assignedToId };
 
     if (Object.keys(changes).length > 0) {
-      await this.slackService.notifyTicketUpdated(fullTicket, changes).catch(err => {
+      this.slackService.notifyTicketUpdated(fullTicket, changes).catch(err => {
         console.error('Failed to notify Slack of ticket update:', err);
       });
     }
 
     // Send email notification on status change
     if (previousStatus !== updateTicketInput.status && updateTicketInput.status && fullTicket.createdBy) {
-      await this.emailService.sendTicketStatusUpdateNotification(fullTicket, fullTicket.createdBy).catch(err => {
+      this.emailService.sendTicketStatusUpdateNotification(fullTicket, fullTicket.createdBy).catch(err => {
         console.error('Failed to send status update email:', err);
       });
     }
 
     // Notify if assigned
     if (previousAssignedTo !== updateTicketInput.assignedToId && updateTicketInput.assignedToId) {
-      await this.slackService.notifyAssignment(fullTicket).catch(err => {
+      this.slackService.notifyAssignment(fullTicket).catch(err => {
         console.error('Failed to notify Slack of assignment:', err);
       });
 
@@ -293,18 +291,18 @@ export class TicketsService {
 
     // Notify Slack if assignment changed
     if (previousAssignedTo !== userId) {
-      await this.slackService.notifyAssignment(fullTicket).catch(err => {
+      this.slackService.notifyAssignment(fullTicket).catch(err => {
         console.error('Failed to notify Slack of assignment:', err);
       });
 
       // Email the assignee (agent)
-      await this.emailService.sendTicketAssignedNotification(fullTicket, assignUser).catch(err => {
+      this.emailService.sendTicketAssignedNotification(fullTicket, assignUser).catch(err => {
         console.error('Failed to send assignment email to agent:', err);
       });
 
       // Notify the customer who created the ticket that it has been assigned
       if (fullTicket.createdBy) {
-        await this.emailService.sendTicketAssignedToCustomerNotification(fullTicket, fullTicket.createdBy, assignUser).catch(err => {
+        this.emailService.sendTicketAssignedToCustomerNotification(fullTicket, fullTicket.createdBy, assignUser).catch(err => {
           console.error('Failed to send assignment email to customer:', err);
         });
       }

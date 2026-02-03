@@ -125,9 +125,10 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useQuery } from '@vue/apollo-composable'
+import { useQuery, useSubscription } from '@vue/apollo-composable'
 import { useTicketStore } from '@/stores/ticket'
 import { GET_TICKETS, GET_TECHNICIANS } from '@/graphql/queries'
+import { NEW_TICKET_SUBSCRIPTION } from '@/graphql/subscriptions'
 import { debounce } from '@/utils/helpers'
 import TicketTable from '@/components/tickets/TicketTable.vue'
 import TicketCard from '@/components/tickets/TicketCard.vue'
@@ -162,6 +163,17 @@ const { result: ticketsResult, loading, refetch } = useQuery(GET_TICKETS, () => 
 
 // Fetch technicians for filter
 const { result: techniciansResult } = useQuery(GET_TECHNICIANS)
+
+// Subscribe to new tickets for real-time updates
+const { onResult: onNewTicket } = useSubscription(NEW_TICKET_SUBSCRIPTION)
+onNewTicket((result) => {
+  if (result.data?.newTicket) {
+    console.log('New ticket received via subscription:', result.data.newTicket.ticketNumber)
+    // Add to store and refetch to ensure proper ordering
+    ticketStore.addTicket(result.data.newTicket)
+    refetch()
+  }
+})
 
 const tickets = computed(() => ticketsResult.value?.tickets || [])
 const totalTickets = computed(() => tickets.value.length)
