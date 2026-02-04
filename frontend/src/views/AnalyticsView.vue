@@ -131,7 +131,7 @@
               <v-card-title>Status Breakdown</v-card-title>
               <v-divider />
               <v-list>
-                <v-list-item v-for="(value, key) in statistics?.byStatus" :key="key">
+                <v-list-item v-for="(value, key) in statusBreakdown" :key="key">
                   <template v-slot:prepend>
                     <v-avatar :color="getStatusColor(key)" size="32">
                       <v-icon size="small" color="white">{{ getStatusIcon(key) }}</v-icon>
@@ -506,6 +506,14 @@ function refetchAll() {
 
 // Computed data from query
 const statistics = computed(() => result.value?.ticketStatistics)
+
+// Filter out __typename from byStatus for display
+const statusBreakdown = computed(() => {
+  const byStatus = statistics.value?.byStatus
+  if (!byStatus) return {}
+  const { __typename, ...rest } = byStatus
+  return rest
+})
 const priorityStats = computed(() => result.value?.ticketsByPriority)
 const agentPerformance = computed(() => result.value?.agentPerformance)
 const ticketTrends = computed(() => result.value?.ticketTrends || [])

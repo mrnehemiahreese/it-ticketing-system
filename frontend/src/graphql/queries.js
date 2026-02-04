@@ -234,18 +234,46 @@ export const GET_TECHNICIANS = gql`
   }
 `
 
-// Analytics queries
+// Analytics queries - fetches all dashboard statistics in one query
 export const GET_ANALYTICS_OVERVIEW = gql`
-  query GetAnalyticsOverview {
-    dashboardStats {
-      totalTickets
-      openTickets
-      inProgressTickets
-      resolvedTickets
-      closedTickets
-      avgResolutionTime
-      ticketsCreatedToday
-      ticketsResolvedToday
+  query GetAnalyticsOverview($days: Int) {
+    ticketStatistics {
+      total
+      byStatus {
+        open
+        inProgress
+        pending
+        resolved
+        closed
+        reopened
+      }
+    }
+    ticketsByPriority {
+      low
+      medium
+      high
+      urgent
+    }
+    agentPerformance {
+      agent {
+        id
+        fullname
+        email
+      }
+      assigned
+      resolved
+      closed
+      total
+    }
+    ticketTrends(days: $days) {
+      date
+      count
+    }
+    averageResolutionTime
+    ticketsBySource {
+      portal
+      email
+      slack
     }
   }
 `
