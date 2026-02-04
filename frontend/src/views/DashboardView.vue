@@ -212,22 +212,34 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
-import { useQuery } from '@vue/apollo-composable'
-import { useTicketStore } from '@/stores/ticket'
-import { GET_TICKETS } from '@/graphql/queries'
-import { formatRelativeTime, getInitials, getAvatarColor } from '@/utils/helpers'
-import StatsCard from '@/components/common/StatsCard.vue'
-import StatusChip from '@/components/tickets/StatusChip.vue'
-import PriorityChip from '@/components/tickets/PriorityChip.vue'
+import { computed, onMounted, watch } from "vue"
+import { useQuery, useSubscription } from "@vue/apollo-composable"
+import { useTicketStore } from "@/stores/ticket"
+import { GET_TICKETS } from "@/graphql/queries"
+import { NEW_TICKET_SUBSCRIPTION } from "@/graphql/subscriptions"
+import { formatRelativeTime, getInitials, getAvatarColor } from "@/utils/helpers"
+import StatsCard from "@/components/common/StatsCard.vue"
+import StatusChip from "@/components/tickets/StatusChip.vue"
+import PriorityChip from "@/components/tickets/PriorityChip.vue"
 
 const ticketStore = useTicketStore()
 
 // Fetch recent tickets
-const { result, loading } = useQuery(GET_TICKETS)
-
+const { result, loading, refetch } = useQuery(GET_TICKETS)
 
 const recentTickets = computed(() => result.value?.tickets || [])
+
+// Subscribe to new tickets for real-time updates
+const { onResult: onNewTicket } = useSubscription(NEW_TICKET_SUBSCRIPTION)
+onNewTicket((subscriptionResult) => {
+  if (subscriptionResult.data?.newTicket) {
+    const newTicket = subscriptionResult.data.newTicket
+    console.log("[Dashboard] New ticket received:", newTicket.ticketNumber)
+    // Add to store and refetch
+    ticketStore.addTicket(newTicket)
+    refetch()
+  }
+})
 
 // Populate store with tickets for stats computation
 watch(() => result.value?.tickets, (tickets) => {
@@ -243,17 +255,18 @@ const resolvedPercentage = computed(() => {
   if (stats.value.total === 0) return 0
   return Math.round((stats.value.resolved / stats.value.total) * 100)
 })
+
 // Derive recent activity from actual tickets
 const recentActivity = computed(() => {
   const tickets = recentTickets.value.slice(0, 5)
   return tickets.map((ticket, index) => {
-    const creator = ticket.createdBy?.fullname || ticket.createdBy?.username || 'Someone'
+    const creator = ticket.createdBy?.fullname || ticket.createdBy?.username || "Someone"
     const statusIcons = {
-      OPEN: { icon: 'mdi-ticket-plus', color: 'primary', verb: 'opened' },
-      IN_PROGRESS: { icon: 'mdi-clock-outline', color: 'warning', verb: 'started working on' },
-      RESOLVED: { icon: 'mdi-check-circle', color: 'success', verb: 'resolved' },
-      CLOSED: { icon: 'mdi-close-circle', color: 'grey', verb: 'closed' },
-      ON_HOLD: { icon: 'mdi-pause-circle', color: 'orange', verb: 'put on hold' },
+      OPEN: { icon: "mdi-ticket-plus", color: "primary", verb: "opened" },
+      IN_PROGRESS: { icon: "mdi-clock-outline", color: "warning", verb: "started working on" },
+      RESOLVED: { icon: "mdi-check-circle", color: "success", verb: "resolved" },
+      CLOSED: { icon: "mdi-close-circle", color: "grey", verb: "closed" },
+      ON_HOLD: { icon: "mdi-pause-circle", color: "orange", verb: "put on hold" },
     }
     const info = statusIcons[ticket.status] || statusIcons.OPEN
     return {
