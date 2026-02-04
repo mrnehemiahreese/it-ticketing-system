@@ -21,6 +21,7 @@
           v-model="localFilters.status"
           multiple
           column
+          @update:modelValue="applyFilters"
         >
           <v-chip
             v-for="status in statusOptions"
@@ -44,6 +45,7 @@
           v-model="localFilters.priority"
           multiple
           column
+          @update:modelValue="applyFilters"
         >
           <v-chip
             v-for="priority in priorityOptions"
@@ -67,6 +69,7 @@
           v-model="localFilters.category"
           multiple
           column
+          @update:modelValue="applyFilters"
         >
           <v-chip
             v-for="category in categoryOptions"
@@ -95,27 +98,15 @@
           variant="outlined"
           density="comfortable"
           clearable
+          @update:modelValue="applyFilters"
         />
       </div>
     </v-card-text>
-
-    <v-divider />
-
-    <v-card-actions>
-      <v-spacer />
-      <v-btn
-        color="primary"
-        variant="flat"
-        @click="applyFilters"
-      >
-        Apply Filters
-      </v-btn>
-    </v-card-actions>
   </v-card>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch } from "vue"
 import {
   TICKET_STATUS,
   TICKET_STATUS_LABELS,
@@ -126,7 +117,7 @@ import {
   TICKET_CATEGORY,
   TICKET_CATEGORY_LABELS,
   TICKET_CATEGORY_ICONS
-} from '@/utils/constants'
+} from "@/utils/constants"
 
 const props = defineProps({
   modelValue: {
@@ -144,7 +135,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:modelValue', 'apply'])
+const emit = defineEmits(["update:modelValue", "apply"])
 
 const localFilters = ref({ ...props.modelValue })
 
@@ -174,8 +165,8 @@ watch(() => props.modelValue, (newValue) => {
 }, { deep: true })
 
 function applyFilters() {
-  emit('update:modelValue', localFilters.value)
-  emit('apply', localFilters.value)
+  emit("update:modelValue", { ...localFilters.value })
+  emit("apply", { ...localFilters.value })
 }
 
 function clearFilters() {
